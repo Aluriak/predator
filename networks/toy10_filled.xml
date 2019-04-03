@@ -1,0 +1,38 @@
+<reaction id="R8" name="R8" reversible="false">
+      <listOfReactants>
+          <speciesReference species="S1" stoichiometry="1" />
+      </listOfReactants>
+      <listOfProducts>
+          <speciesReference species="x" stoichiometry="1.0000" />
+          <speciesReference species="a" stoichiometry="1.0000" />
+      </listOfProducts>
+      <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <ci>FLUX_VALUE</ci>
+          </math>
+          <listOfParameters>
+          <parameter id="LOWER_BOUND" value="0" units="mmol_per_gDW_per_hr"/>
+          <parameter id="UPPER_BOUND" value="99999" units="mmol_per_gDW_per_hr"/>
+          <parameter id="OBJECTIVE_COEFFICIENT" value="0" />
+          <parameter id="FLUX_VALUE" value="0" units="mmol_per_gDW_per_hr"/>
+          </listOfParameters>
+          </kineticLaw>
+</reaction>
+<reaction id="R_exp_x" name="R_exp_x" reversible="false">
+     <listOfReactants>
+         <speciesReference species="x" stoichiometry="1" />
+     </listOfReactants>
+     <listOfProducts>
+     </listOfProducts>
+     <kineticLaw>
+         <math xmlns="http://www.w3.org/1998/Math/MathML">
+         <ci>FLUX_VALUE</ci>
+         </math>
+         <listOfParameters>
+         <parameter id="LOWER_BOUND" value="0" units="mmol_per_gDW_per_hr"/>
+         <parameter id="UPPER_BOUND" value="99999" units="mmol_per_gDW_per_hr"/>
+         <parameter id="OBJECTIVE_COEFFICIENT" value="0" />
+         <parameter id="FLUX_VALUE" value="0" units="mmol_per_gDW_per_hr"/>
+         </listOfParameters>
+         </kineticLaw>
+</reaction>
