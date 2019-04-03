@@ -1,2 +1,14 @@
 # Predator
 Seed extraction in metabolic networks.
+
+## installation
+
+    pip install predator
+
+
+
+## release cycle
+Releases made with [zest.releaser](https://zestreleaser.readthedocs.io):
+
+    pip install zest.releaser[recommended]  # install the manager
+    fullrelease  # make a new release
