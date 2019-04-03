@@ -1,0 +1,11 @@
+*.pyc
+*.vim
+.cache/
+.pytest_cache
+__pycache__/
+build/
+dist/
+old-predator/
+predator.egg-info/
+venv-*/
+venv/
