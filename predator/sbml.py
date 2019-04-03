@@ -3,7 +3,6 @@
 """
 
 import re
-from pyasp.asp import *
 import xml.etree.ElementTree as etree
 from xml.etree.ElementTree import XML, fromstring, tostring
 
@@ -89,42 +88,36 @@ def get_listOfProducts(reaction):
 
 
 def readSBMLnetwork(filename, name):
-    """
-    Read a SBML network and turn it into ASP-friendly data
-    """
-    lpfacts = TermSet()
-
+    """Yield ASP atoms describing the network found in given SBML network"""
     tree = etree.parse(filename)
     sbml = tree.getroot()
     model = get_model(sbml)
 
-    listOfReactions = get_listOfReactions(model)
-    for e in listOfReactions:
+    reactions = get_listOfReactions(model)
+    for e in reactions:
         if e.tag[0] == "{":
             uri, tag = e.tag[1:].split("}")
         else:
             tag = e.tag
         if tag == "reaction":
             reactionId = e.attrib.get("id")
-            lpfacts.add(Term("dreaction", ['"' + reactionId + '"']))  # , "\""+name+"\""
+            yield f'dreaction("{reactionId}").'
             if e.attrib.get("reversible") == "true":
-                lpfacts.add(Term("reversible", ['"' + reactionId + '"']))
+                yield f'reversible("{reactionId}").'
 
-            listOfReactants = get_listOfReactants(e)
-            if listOfReactants == None:
-                print("\n Warning:", reactionId, "listOfReactants=None")
+            reactants = get_listOfReactants(e)
+            if reactants == None:
+                print("\n Warning:", reactionId, "reactants=None")
             else:
-                for r in listOfReactants:
-                    lpfacts.add(Term('reactant', ["\""+r.attrib.get("species")+"\"", "\""+reactionId+"\""])) #,"\""+name+"\""
+                for r in reactants:
+                    yield f"reactant(\"{r.attrib.get('species')}\",\"{reactionId}\")."
 
-            listOfProducts = get_listOfProducts(e)
-            if listOfProducts == None:
-                print("\n Warning:", reactionId, "listOfProducts=None")
+            products = get_listOfProducts(e)
+            if products == None:
+                print("\n Warning:", reactionId, "products=None")
             else:
-                for p in listOfProducts:
-                    lpfacts.add(Term('product', ["\""+p.attrib.get("species")+"\"", "\""+reactionId+"\""])) #,"\""+name+"\""
-    #print(lpfacts)
-    return lpfacts
+                for p in products:
+                    yield f"product(\{p.attrib.get('species')}\",\"{reactionId}\")."
 
 
 def readSBMLnetwork_irrev(filename, name):
@@ -137,8 +130,8 @@ def readSBMLnetwork_irrev(filename, name):
     sbml = tree.getroot()
     model = get_model(sbml)
 
-    listOfReactions = get_listOfReactions(model)
-    for e in listOfReactions:
+    reactions = get_listOfReactions(model)
+    for e in reactions:
         reversibool = False
         if e.tag[0] == "{":
             uri, tag = e.tag[1:].split("}")
