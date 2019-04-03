@@ -7,11 +7,11 @@ import os
 from . import sbml
 
 
-def graph_from_file(fname:str) -> str:
+def graph_from_file(fname:str, **kwargs) -> str:
     """Return ASP data encoding graph in given file."""
-    basename, ext = os.path.splitext(fname)
+    ext = os.path.splitext(fname)[1]
     if ext in {'.xml', '.sbml'}:
-        return sbml.readSBMLnetwork(fname, os.path.split(basename)[1])
+        return sbml.readSBMLnetwork(fname, **kwargs)
     elif ext == '.lp':
         with open(fname) as fd:
             return fd.read()
