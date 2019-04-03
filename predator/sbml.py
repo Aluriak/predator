@@ -3,6 +3,7 @@
 """
 
 import re
+import networkx as nx
 import xml.etree.ElementTree as etree
 from xml.etree.ElementTree import XML, fromstring, tostring
 
@@ -113,6 +114,40 @@ def readSBMLnetwork(filename,
                 yield f'product("{name}","{reactionId}").'
                 if use_topological_injections and not reactants:  # this reaction is a generator of seed
                     yield f'seed("{name}").'
+
+
+def read_SBML_network_as_simple_graph(filename):
+    """Return the networkx.DiGraph object describing the network found in given SBML network.
+
+    filename -- sbml/xml file name.
+
+    """
+    tree = etree.parse(filename)
+    sbml = tree.getroot()
+    model = get_model(sbml)
+    graph = nx.DiGraph()
+
+    reactions = get_listOfReactions(model)
+    for e in reactions:
+        tag = get_sbml_tag(e)
+        if tag == "reaction":
+            reactionId = e.attrib.get("id")
+            reaction_name = 'R' + reactionId
+            reversible = e.attrib.get("reversible") == 'true'
+            graph.add_node(reaction_name, isreaction=True, reversible=reversible)
+
+            reactants = get_listOfReactants(e)
+            products = get_listOfProducts(e)
+
+            for reactant in reactants:
+                name = reactant.attrib.get('species')
+                graph.add_edge(reaction_name, name)
+
+            for product in products:
+                name = product.attrib.get('species')
+                graph.add_edge(name, reaction_name)
+
+    return graph
 
 
 def readSBMLnetwork_irrev(filename, name):
