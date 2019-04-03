@@ -3,6 +3,8 @@
 """
 
 import argparse
+from . import graph as graph_module
+from . import predator
 
 
 def existant_file(filepath:str) -> str:
@@ -20,7 +22,7 @@ def cli_parser() -> argparse.ArgumentParser:
     # arguments
     parser.add_argument('--targets-file', type=str, default=None,
                         help="file containing one target per line")
-    parser.add_argument('--targets', nargs='*', default=[],
+    parser.add_argument('--targets', nargs='*', type=set, default=[],
                         help="targets to activate in the graph")
     # flags
     parser.add_argument('--union', action='store_true',
@@ -36,4 +38,13 @@ def parse_args(args: iter = None) -> dict:
 
 
 if __name__ == '__main__':
-    cliargs = parse_args()
+    args = parse_args()
+    graph = graph_module.graph_from_file(args.infile)
+    # compute available targets (union of --targets and --targets-file)
+    targets = frozenset(args.targets)
+    if args.targets_file:
+        with open(args.targets_file) as fd:
+            targets = targets | frozenset(line for line in map(str.strip, fd) if line)
+    for idx, solution in enumerate(predator.search_seeds(graph, targets), start=1):
+        print(f"Solution {idx}:\n{solution}\n")
+    print('end.')
