@@ -45,6 +45,12 @@ if __name__ == '__main__':
     if args.targets_file:
         with open(args.targets_file) as fd:
             targets = targets | frozenset(line for line in map(str.strip, fd) if line)
-    for idx, solution in enumerate(predator.search_seeds(graph, targets), start=1):
+    # main work
+    union_over_seeds, intersection_over_seeds = set(), set()
+    for idx, seeds in enumerate(predator.search_seeds(graph, targets), start=1):
+        union_over_seeds |= seeds
+        intersection_over_seeds &= seeds
         print(f"Solution {idx}:\n{solution}\n")
-    print('end.')
+    print('end of solutions.')
+    print('\nUnion:', ', '.join(union_over_seeds))
+    print('\nIntersection:', ', '.join(intersection_over_seeds))
