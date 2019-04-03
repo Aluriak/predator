@@ -1,0 +1,5 @@
+include LICENCE.txt MANIFEST.in README.mkd
+exclude Makefile
+recursive-include predator *.py
+prune networks
+prune test
