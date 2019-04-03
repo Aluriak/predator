@@ -9,8 +9,8 @@ from . import sbml
 
 def graph_from_file(fname:str) -> str:
     """Return ASP data encoding graph in given file."""
-    basename, ext = os.path.splitext(fname)[1]
-    if ext == '.sbml':
+    basename, ext = os.path.splitext(fname)
+    if ext in {'.xml', '.sbml'}:
         return sbml.readSBMLnetwork(fname, os.path.split(basename)[1])
     elif ext == '.lp':
         with open(fname) as fd:
