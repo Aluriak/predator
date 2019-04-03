@@ -29,7 +29,11 @@ def cli_parser() -> argparse.ArgumentParser:
     parser.add_argument('--union', action='store_true',
                         help="Print the union of all solutions")
     parser.add_argument('--intersection', action='store_true',
-                        help="Print the union of all solutions")
+                        help="Print the intersection of all solutions")
+    parser.add_argument('--no-topological-injection', action='store_true',
+                        help="Do not use topological injection found in sbml data")
+    parser.add_argument('--semantic-injection', action='store_true',
+                        help="Use semantic injection found in sbml data")
 
     return parser
 
@@ -40,7 +44,11 @@ def parse_args(args: iter = None) -> dict:
 
 if __name__ == '__main__':
     args = parse_args()
-    graph = graph_module.graph_from_file(args.infile)
+    graph = graph_module.graph_from_file(
+        args.infile,
+        use_topological_injections=not args.no_topological_injection,
+        use_semantic_injection=args.semantic_injection
+    )
     # compute available targets (union of --targets and --targets-file)
     targets = frozenset(args.targets)
     if args.targets_file:
@@ -49,9 +57,9 @@ if __name__ == '__main__':
     # main work
     union_over_seeds, intersection_over_seeds = set(), set()
     for idx, seeds in enumerate(predator.search_seeds(graph, targets), start=1):
-        union_over_seeds |= seeds
-        intersection_over_seeds &= seeds
+        if args.union:  union_over_seeds |= seeds
+        if args.intersection:  intersection_over_seeds &= seeds
         print(f"Solution {idx}:\n{solution}\n")
     print('end of solutions.')
-    print('\nUnion:', ', '.join(union_over_seeds))
-    print('\nIntersection:', ', '.join(intersection_over_seeds))
+    if args.union:  print('\nUnion:', ', '.join(union_over_seeds))
+    if args.intersection:  print('\nIntersection:', ', '.join(intersection_over_seeds))
