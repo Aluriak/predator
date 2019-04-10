@@ -23,8 +23,10 @@ def cli_parser() -> argparse.ArgumentParser:
     # arguments
     parser.add_argument('--targets-file', type=str, default=None,
                         help="file containing one target per line")
-    parser.add_argument('--targets', nargs='*', type=str, default=[],
+    parser.add_argument('--targets', '-t', nargs='*', type=str, default=[],
                         help="targets to activate in the graph")
+    parser.add_argument('--visualize', '-v', type=str, default=None,
+                        help="png file to render the input graph in (default: don't render)")
     # flags
     parser.add_argument('--union', action='store_true',
                         help="Print the union of all solutions")
@@ -69,3 +71,13 @@ if __name__ == '__main__':
     print('end of solutions.')
     if args.union:  print('\nUnion:', ', '.join(union_over_seeds))
     if args.intersection:  print('\nIntersection:', ', '.join(intersection_over_seeds))
+    if args.visualize:
+        import biseau
+        BISEAU_VIZ = """
+        link(T,R) :- reactant(T,R).
+        link(R,P) :- product(P,R).
+        shape(R,rectangle) :- reaction(R).
+        obj_property(edge,arrowhead,vee).
+        """
+        biseau.compile_to_single_image(graph + BISEAU_VIZ, outfile=args.visualize)
+        print('Input graph rendered in ' + args.visualize)

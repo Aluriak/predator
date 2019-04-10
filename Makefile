@@ -1,6 +1,6 @@
 
 run:
-	python -m predator networks/toy10_filled.xml
+	python -m predator networks/orgA.xml -v viz.png
 
 t: test
 test:
