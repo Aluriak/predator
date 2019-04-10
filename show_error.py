@@ -5,6 +5,75 @@
 import xml.etree.ElementTree as etree
 from xml.etree.ElementTree import XML, fromstring, tostring
 
+
+def get_sbml_tag(element) -> str:
+    "Return tag associated with given SBML element"
+    if element.tag[0] == "{":
+        _, tag = element.tag[1:].split("}")  # uri is not used
+    else:
+        tag = element.tag
+    return tag
+
+
+def get_model(sbml):
+    """
+    return the model of a SBML
+    """
+    model_element = None
+    for e in sbml:
+        tag = get_sbml_tag(e)
+        if tag == "model":
+            model_element = e
+            break
+    return model_element
+
+
+def get_listOfSpecies(model):
+    """
+    return list of species of a SBML model
+    """
+    listOfSpecies = None
+    for e in model:
+        tag = get_sbml_tag(e)
+        if tag == "listOfSpecies":
+            listOfSpecies = e
+            break
+    return listOfSpecies
+
+
+def get_listOfReactions(model) -> list:
+    """return list of reactions of a SBML model"""
+    listOfReactions = []
+    for e in model:
+        tag = get_sbml_tag(e)
+        if tag == "listOfReactions":
+            listOfReactions = e
+            break
+    return listOfReactions
+
+
+def get_listOfReactants(reaction) -> list:
+    """return list of reactants of a reaction"""
+    listOfReactants = []
+    for e in reaction:
+        tag = get_sbml_tag(e)
+        if tag == "listOfReactants":
+            listOfReactants = e
+            break
+    return listOfReactants
+
+
+def get_listOfProducts(reaction) -> list:
+    """return list of products of a reaction"""
+    listOfProducts = []
+    for e in reaction:
+        tag = get_sbml_tag(e)
+        if tag == "listOfProducts":
+            listOfProducts = e
+            break
+    return listOfProducts
+
+
 def readSBMLnetwork(filename,
                     use_topological_injections:bool=True,
                     use_semantic_injection:bool=False):
