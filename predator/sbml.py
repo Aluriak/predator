@@ -94,7 +94,7 @@ def readSBMLnetwork(filename,
         tag = get_sbml_tag(e)
         if tag == "reaction":
             reactionId = e.attrib.get("id")
-            yield f'dreaction("{reactionId}").'
+            yield f'reaction("{reactionId}").'
             reversible = e.attrib.get("reversible") == 'true'
             if reversible:
                 yield f'reversible("{reactionId}").'
@@ -168,10 +168,10 @@ def readSBMLnetwork_irrev(filename, name):
             tag = e.tag
         if tag == "reaction":
             reactionId = e.attrib.get("id")
-            lpfacts.add(Term("dreaction", ['"' + reactionId + '"']))  # , "\""+name+"\""
+            lpfacts.add(Term("reaction", ['"' + reactionId + '"']))  # , "\""+name+"\""
             if e.attrib.get("reversible") == "true":
                 reversibool = True
-                lpfacts.add(Term("dreaction", ['"' + reactionId + '_rev"']))
+                lpfacts.add(Term("reaction", ['"' + reactionId + '_rev"']))
                 # lpfacts.add(Term('reversible', ["\""+reactionId+"\""]))
 
             listOfReactants = get_listOfReactants(e)
