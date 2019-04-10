@@ -1,0 +1,1 @@
+sccedge("R2","R2"). sccedge("R6","R2"). sccedge("R7","R2"). sccedge("S1","R1"). sccedge("S1","R8"). sccedge("t","R_exp_t"). sccedge("b","R7"). sccedge("S1_b","R_boundary1"). sccedge("R2","R5"). sccedge("a","R5"). sccedge("S1","R6"). sccedge("R1","b"). sccedge("R_boundary1","S1"). sccedge("R5","t"). sccedge("R8","a"). sccedge("R8","x").
