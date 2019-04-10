@@ -2,7 +2,6 @@
 
 """
 
-import re
 import networkx as nx
 import xml.etree.ElementTree as etree
 from xml.etree.ElementTree import XML, fromstring, tostring
