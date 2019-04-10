@@ -11,7 +11,7 @@ def graph_from_file(fname:str, **kwargs) -> str:
     """Return ASP data encoding graph in given file."""
     ext = os.path.splitext(fname)[1]
     if ext in {'.xml', '.sbml'}:
-        return sbml.readSBMLnetwork(fname, **kwargs)
+        return '\n'.join(sbml.readSBMLnetwork(fname, **kwargs))
     elif ext == '.lp':
         with open(fname) as fd:
             return fd.read()
