@@ -9,4 +9,5 @@ old-predator/
 predator.egg-info/
 venv-*/
 venv/
+viz-nor.png
 viz.png

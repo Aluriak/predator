@@ -1,6 +1,6 @@
 
 run:
-	python -m predator networks/orgA.xml -v viz.png
+	python -m predator networks/orgA.xml -v viz.png -vr viz-nor.png
 
 t: test
 test:

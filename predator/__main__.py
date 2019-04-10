@@ -8,6 +8,18 @@ from . import graph as graph_module
 from . import predator
 
 
+BISEAU_VIZ = """
+link(T,R) :- reactant(T,R).
+link(R,P) :- product(P,R).
+shape(R,rectangle) :- reaction(R).
+obj_property(edge,arrowhead,vee).
+"""
+BISEAU_VIZ_NOREACTION = """
+link(P,M) :- product(P,R) ; reactant(M,R).
+obj_property(edge,arrowhead,vee).
+"""
+
+
 def existant_file(filepath:str) -> str:
     """Argparse type, raising an error if given file does not exists"""
     if not os.path.exists(filepath):
@@ -27,6 +39,8 @@ def cli_parser() -> argparse.ArgumentParser:
                         help="targets to activate in the graph")
     parser.add_argument('--visualize', '-v', type=str, default=None,
                         help="png file to render the input graph in (default: don't render)")
+    parser.add_argument('--visualize-without-reactions', '-vr', type=str, default=None,
+                        help="png file to render, without reactions, the input graph in (default: don't render)")
     # flags
     parser.add_argument('--union', action='store_true',
                         help="Print the union of all solutions")
@@ -73,11 +87,9 @@ if __name__ == '__main__':
     if args.intersection:  print('\nIntersection:', ', '.join(intersection_over_seeds))
     if args.visualize:
         import biseau
-        BISEAU_VIZ = """
-        link(T,R) :- reactant(T,R).
-        link(R,P) :- product(P,R).
-        shape(R,rectangle) :- reaction(R).
-        obj_property(edge,arrowhead,vee).
-        """
         biseau.compile_to_single_image(graph + BISEAU_VIZ, outfile=args.visualize)
         print('Input graph rendered in ' + args.visualize)
+    if args.visualize_without_reactions:
+        import biseau
+        biseau.compile_to_single_image(graph + BISEAU_VIZ_NOREACTION, outfile=args.visualize_without_reactions)
+        print('Input graph rendered without reactions in ' + args.visualize_without_reactions)
