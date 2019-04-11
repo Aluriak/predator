@@ -15,7 +15,7 @@ shape(R,rectangle) :- reaction(R).
 obj_property(edge,arrowhead,vee).
 """
 BISEAU_VIZ_NOREACTION = """
-link(P,M) :- product(P,R) ; reactant(M,R).
+link(M,P) :- product(P,R) ; reactant(M,R).
 obj_property(edge,arrowhead,vee).
 """
 
