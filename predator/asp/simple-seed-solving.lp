@@ -4,7 +4,6 @@
 %  This encodes the fact that previous SCC are completely activated.
 % INPUTS:
 %   - seed(S): node S is a seed
-%   - oedge(X,Y): there is a link going from X to Y
 %   - scc(S,X): node X is in scc S
 %   - current_scc(S): scc S is the scc to treat for this call
 %   - reaction(R): R is a reaction.
@@ -17,11 +16,11 @@
 metabolite(M) :- reactant(M,_) ; current_scc(S) ; scc(S,M).
 metabolite(M) :- product(M,_) ; current_scc(S) ; scc(S,M).
 
+% All foreign reactants of (partially) foreign reactions are activated.
+activated(T) :- not metabolite(T) ; reaction(R) ; reactant(T,R) ; metabolite(M) ; product(M,R).
+
 % A metabolite is activated if produced by a reaction with all its reactants activated.
 activated(M) :- metabolite(M) ; product(M,R) ; activated(T): reactant(T,R).
-
-% All foreign reactants of (partially) foreign reactions are activated.
-activated(T) :- not metabolite(T) ; reaction(R) ; reactant(T,R) ; metabolite(M) ; product(M).
 
 % A seed is activated
 activated(S) :- seed(S).
