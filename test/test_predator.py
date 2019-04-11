@@ -24,3 +24,10 @@ def test_double_reactant_with_feedback_reaction():
     # utils.render_network(graph, 'todel.png')  # uncomment to help debugging
     expected_seeds_sets = {frozenset('ab'), frozenset('pb')}
     assert expected_seeds_sets == set(search_seeds(graph))
+
+
+def test_loop():
+    graph = 'reactant(a,1). product(b,1). reaction(1).  reactant(b,2). product(a,2). reaction(2).'
+    # utils.render_network(graph, 'todel.png')  # uncomment to help debugging
+    expected_seeds_sets = {frozenset('a'), frozenset('b')}
+    assert expected_seeds_sets == set(search_seeds(graph))
