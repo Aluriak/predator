@@ -10,13 +10,10 @@ reaction(R) :- dreaction(R).
 #show sccedge/2.  % link between SCC
 
 
-% the edges
-% oedge(R,P) :- product(P,R).
-% oedge(M,R) :- reactant(M,R).
-oedge(P,M) :- product(P,R) ; reactant(M,R).
+% the edges are linking reactants to products of each reaction.
+oedge(T,P) :- reactant(T,R) ; product(P,R).
 
 % the nodes
-% node(R) :- reaction(R).
 node(M) :- reactant(M,_).
 node(M) :- product(M,_).
 

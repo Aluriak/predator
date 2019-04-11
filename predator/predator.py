@@ -43,15 +43,18 @@ def search_seeds(graph_data:str, start_seeds:iter=(), targets:set=(), graph_file
     for scc_name, nodes in sccs.items():
         scc_repr = ' '.join(f'scc({scc_name},{node}).' for node in nodes)
         scc_data = f'current_scc({scc_name}). {scc_repr} {start_seeds_repr} {targets_repr}'
-        # print('DATA:', scc_data, graph_data)
+        # print('DATA:\n    ' + scc_data)
+        # print('    ' + graph_data)
+        # print()
         models = clyngor.solve(ASP_SRC_SIMPLE_SEED_SOLVING, inline=graph_data + scc_data, options='--opt-mode=optN').discard_quotes
         models = opt_models_from_clyngor_answers(models.by_predicate)
         scc_seeds[scc_name] = tuple(frozenset(args[0] for args in model.get('seed', ())) for model in models)
+        # print('OUTPUT SEEDS:', scc_seeds[scc_name])
     # generate all possibilities
-    for idx, seeds_sets in enumerate(itertools.product(*scc_seeds.values()), start=1):
-        seeds = frozenset.union(*seeds_sets)
-        yield seeds
-
+    seed_combinations = tuple(itertools.product(*scc_seeds.values()))
+    for idx, seeds_sets in enumerate(seed_combinations, start=1):
+        # seeds_set is a combination of possible set of seeds for each SCC
+        yield frozenset.union(*seeds_sets)
 
 
 def compute_sccs(graph_data:str, graph_filename:str=None) -> [{str}]:
@@ -77,6 +80,12 @@ def compute_sccs(graph_data:str, graph_filename:str=None) -> [{str}]:
             for scc_name, scc_succ in model.get('sccedge', ()):
                 scc_dag[scc_name].add(scc_succ)
             scc_dag[None] = roots
+            sccs = dict(sccs)
+            scc_dag = dict(scc_dag)
+        print('SCC FINAL:', sccs)
+        print()
+        print('         :', scc_dag)
+        print()
         return sccs, scc_dag
     else:  # use graph_filename
         raise NotImplementedError("Networkx based SCC extraction is not yet implemented")
