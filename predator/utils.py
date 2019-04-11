@@ -13,7 +13,7 @@ obj_property(edge,arrowhead,vee).
 """
 
 
-def render_network(graph:str, outfile:str, with_reactions=False):
+def render_network(graph:str, outfile:str, with_reactions=True):
     "Render given graph using biseau, as a single image saved with given filename."
     import biseau
     viz = BISEAU_VIZ if with_reactions else BISEAU_VIZ_NOREACTION
