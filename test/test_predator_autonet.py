@@ -5,7 +5,7 @@ and their .test (if available).
 
 import os
 import glob
-from predator import graph_from_file, search_seeds
+from predator import graph_from_file, search_seeds, utils
 
 
 def seeds_from_file(fname:str) -> [str]:
@@ -35,6 +35,7 @@ def template_test_network_example(graph_file, seeds_file):
     graph = graph_from_file(graph_file)
     def test_network_example():
         seeds_sets = set(search_seeds(graph))
+        # utils.render_network(graph, 'todel.png')  # uncomment to help debugging
         assert seeds_sets == expected_seeds_sets
     return test_network_example
 

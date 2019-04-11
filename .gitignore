@@ -7,6 +7,7 @@ build/
 dist/
 old-predator/
 predator.egg-info/
+todel.png
 venv-*/
 venv/
 viz-nor.png
