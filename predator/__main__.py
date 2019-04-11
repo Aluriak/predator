@@ -5,19 +5,7 @@
 import os
 import argparse
 from . import graph as graph_module
-from . import predator
-
-
-BISEAU_VIZ = """
-link(T,R) :- reactant(T,R).
-link(R,P) :- product(P,R).
-shape(R,rectangle) :- reaction(R).
-obj_property(edge,arrowhead,vee).
-"""
-BISEAU_VIZ_NOREACTION = """
-link(M,P) :- product(P,R) ; reactant(M,R).
-obj_property(edge,arrowhead,vee).
-"""
+from . import predator, utils
 
 
 def existant_file(filepath:str) -> str:
@@ -33,10 +21,14 @@ def cli_parser() -> argparse.ArgumentParser:
     parser.add_argument('infile', type=existant_file,
                         help="SBML or ASP file containing the graph data")
     # arguments
-    parser.add_argument('--targets-file', type=str, default=None,
+    parser.add_argument('--targets-file', '-tf', type=str, default=None,
                         help="file containing one target per line")
     parser.add_argument('--targets', '-t', nargs='*', type=str, default=[],
                         help="targets to activate in the graph")
+    parser.add_argument('--seeds-file', '-sf', type=str, default=None,
+                        help="file containing one seed per line")
+    parser.add_argument('--seeds', '-s', nargs='*', type=str, default=[],
+                        help="seeds already activated in the graph")
     parser.add_argument('--visualize', '-v', type=str, default=None,
                         help="png file to render the input graph in (default: don't render)")
     parser.add_argument('--visualize-without-reactions', '-vr', type=str, default=None,
@@ -71,10 +63,15 @@ if __name__ == '__main__':
     if args.targets_file:
         with open(args.targets_file) as fd:
             targets = targets | frozenset(line for line in map(str.strip, fd) if line)
+    # compute available seeds (union of --seeds and --seeds-file)
+    seeds = frozenset(args.seeds)
+    if args.seeds_file:
+        with open(args.seeds_file) as fd:
+            seeds = seeds | frozenset(line for line in map(str.strip, fd) if line)
     # main work
     union_over_seeds, intersection_over_seeds = set(), set()
     first_loop = True  # only true during the first iteration of the next loop
-    for idx, seeds in enumerate(predator.search_seeds(graph, targets), start=1):
+    for idx, seeds in enumerate(predator.search_seeds(graph, seeds, targets), start=1):
         if args.union:  union_over_seeds |= seeds
         if args.intersection:
             if first_loop:  intersection_over_seeds = seeds
@@ -86,10 +83,6 @@ if __name__ == '__main__':
     if args.union:  print('\nUnion:', ', '.join(union_over_seeds))
     if args.intersection:  print('\nIntersection:', ', '.join(intersection_over_seeds))
     if args.visualize:
-        import biseau
-        biseau.compile_to_single_image(graph + BISEAU_VIZ, outfile=args.visualize)
-        print('Input graph rendered in ' + args.visualize)
+        print('Input graph rendered in', utils.render_network(graph, args.visualize, with_reactions=True))
     if args.visualize_without_reactions:
-        import biseau
-        biseau.compile_to_single_image(graph + BISEAU_VIZ_NOREACTION, outfile=args.visualize_without_reactions)
-        print('Input graph rendered without reactions in ' + args.visualize_without_reactions)
+        print('Input graph rendered in', utils.render_network(graph, args.visualize_without_reactions, with_reactions=False))
