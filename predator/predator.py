@@ -30,23 +30,26 @@ def opt_models_from_clyngor_answers(answers:iter, *, smaller_is_best:bool=True):
     return tuple(models)
 
 
-def search_seeds(graph_data:str, targets:set=None, graph_filename:str=None) -> [str]:
+def search_seeds(graph_data:str, start_seeds:iter=(), targets:set=(), graph_filename:str=None) -> [str]:
     """Yield the set of seeds for each found solution.
 
     """
+    start_seeds_repr = ' '.join(f'seed({s}).' for s in start_seeds)
+    targets_repr = ' '.join(f'target({t}).' for t in targets)
     assert isinstance(graph_data, str), graph_data
     sccs, scc_dag = compute_sccs(graph_data, graph_filename=graph_filename)
     roots = scc_dag[None]
     scc_seeds = {}  # scc name: list of {optimal seeds}
     for scc_name, nodes in sccs.items():
-        scc_data = ''
-        models = clyngor.solve(ASP_SRC_SIMPLE_SEED_SOLVING, inline=graph_data + scc_data, options='--opt-mode=optN')
+        scc_repr = ' '.join(f'scc({scc_name},{node}).' for node in nodes)
+        scc_data = f'current_scc({scc_name}). {scc_repr} {start_seeds_repr} {targets_repr}'
+        # print('DATA:', scc_data, graph_data)
+        models = clyngor.solve(ASP_SRC_SIMPLE_SEED_SOLVING, inline=graph_data + scc_data, options='--opt-mode=optN').discard_quotes
         models = opt_models_from_clyngor_answers(models.by_predicate)
-        scc_seeds[scc_name] = tuple(frozenset(args[0] for arg in model.get('seed', ())) for model in models)
+        scc_seeds[scc_name] = tuple(frozenset(args[0] for args in model.get('seed', ())) for model in models)
     # generate all possibilities
     for idx, seeds_sets in enumerate(itertools.product(*scc_seeds.values()), start=1):
         seeds = frozenset.union(*seeds_sets)
-        print(f"#{idx}:\n{seeds or set()}\n")
         yield seeds
 
 
