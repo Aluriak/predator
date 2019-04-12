@@ -59,7 +59,7 @@ def get_all_ids(inline, fname) -> frozenset:
     if fname:
         with open(fname) as fd:
             elements = elements | frozenset(line for line in map(str.strip, fd) if line)
-     return elements
+    return elements
 
 
 if __name__ == '__main__':
