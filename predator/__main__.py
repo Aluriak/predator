@@ -29,6 +29,10 @@ def cli_parser() -> argparse.ArgumentParser:
                         help="file containing one seed per line")
     parser.add_argument('--seeds', '-s', nargs='*', type=str, default=[],
                         help="seeds already activated in the graph")
+    parser.add_argument('--forbidden-seeds-file', '-fsf', type=str, default=None,
+                        help="file containing one forbidden seed per line")
+    parser.add_argument('--forbidden-seeds', '-fs', nargs='*', type=str, default=[],
+                        help="metabolites that cannot be seed in the graph")
     parser.add_argument('--visualize', '-v', type=str, default=None,
                         help="png file to render the input graph in (default: don't render)")
     parser.add_argument('--visualize-without-reactions', '-vr', type=str, default=None,
@@ -49,6 +53,14 @@ def cli_parser() -> argparse.ArgumentParser:
 def parse_args(args: iter = None) -> dict:
     return cli_parser().parse_args(args)
 
+def get_all_ids(inline, fname) -> frozenset:
+    "Return the set of all seeds, targets or forbidden seeds"
+    elements = frozenset(inline)
+    if fname:
+        with open(fname) as fd:
+            elements = elements | frozenset(line for line in map(str.strip, fd) if line)
+     return elements
+
 
 if __name__ == '__main__':
     args = parse_args()
@@ -59,19 +71,14 @@ if __name__ == '__main__':
         use_semantic_injection=args.semantic_injection
     )
     # compute available targets (union of --targets and --targets-file)
-    targets = frozenset(args.targets)
-    if args.targets_file:
-        with open(args.targets_file) as fd:
-            targets = targets | frozenset(line for line in map(str.strip, fd) if line)
-    # compute available seeds (union of --seeds and --seeds-file)
-    seeds = frozenset(args.seeds)
-    if args.seeds_file:
-        with open(args.seeds_file) as fd:
-            seeds = seeds | frozenset(line for line in map(str.strip, fd) if line)
+    #  (and do the same for (forbidden) seeds)
+    targets = get_all_ids(args.targets, args.targets_file)
+    seeds = get_all_ids(args.seeds, args.seeds_file)
+    forbidden_seeds = get_all_ids(args.forbidden_seeds, args.forbidden_seeds_file)
     # main work
     union_over_seeds, intersection_over_seeds = set(), set()
     first_loop = True  # only true during the first iteration of the next loop
-    for idx, seeds in enumerate(predator.search_seeds(graph, seeds, targets), start=1):
+    for idx, seeds in enumerate(predator.search_seeds(graph, seeds, forbidden_seeds, targets), start=1):
         if args.union:  union_over_seeds |= seeds
         if args.intersection:
             if first_loop:  intersection_over_seeds = seeds

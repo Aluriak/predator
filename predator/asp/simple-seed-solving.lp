@@ -4,6 +4,7 @@
 %  This encodes the fact that previous SCC are completely activated.
 % INPUTS:
 %   - seed(S): node S is a seed
+%   - forbidden(S): node S cannot be a seed
 %   - scc(S,X): node X is in scc S
 %   - current_scc(S): scc S is the scc to treat for this call
 %   - reaction(R): R is a reaction.
@@ -26,7 +27,7 @@ activated(M) :- metabolite(M) ; product(M,R) ; activated(T): reactant(T,R).
 activated(S) :- seed(S).
 
 % Choose a set of seeds among metabolites of the current SCC.
-{ seed(M): metabolite(M) }.
+{ seed(M): metabolite(M), not forbidden(M) }.
 
 % Ensure its minimality
 nb_seed(N) :- N={seed(_)}.
