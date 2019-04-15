@@ -89,18 +89,33 @@ def readSBMLnetwork(filename,
     sbml = tree.getroot()
     model = get_model(sbml)
 
+    def make_reaction(rxn_name, reactants, products):
+        """Add reverse reaction"""
+        yield f'reaction("{rxn_name}").'
+
+        for reactant in reactants:
+            rname = reactant.attrib.get('species')
+            yield f'reactant("{rname}","{rxn_name}").'
+
+        for product in products:
+            pname = product.attrib.get('species')
+            yield f'product("{pname}","{rxn_name}").'
+
     reactions = get_listOfReactions(model)
     for e in reactions:
         tag = get_sbml_tag(e)
         if tag == "reaction":
             reactionId = e.attrib.get("id")
             yield f'reaction("{reactionId}").'
-            reversible = e.attrib.get("reversible") == 'true'
-            if reversible:
-                yield f'reversible("{reactionId}").'
 
             reactants = get_listOfReactants(e)
             products = get_listOfProducts(e)
+
+            reversible = e.attrib.get("reversible") == 'true'
+            if reversible:
+                yield from make_reaction('rev_' + reactionId, products, reactants)
+                yield f'reversible("{reactionId}").'
+
 
             for reactant in reactants:
                 name = reactant.attrib.get('species')
@@ -126,17 +141,17 @@ def read_SBML_network_as_simple_graph(filename):
     model = get_model(sbml)
     graph = nx.DiGraph()
 
-    def make_reaction(name, reactants, products):
-        "add reaction to graph"
-        graph.add_node(reaction_name, isreaction=True)
+    def make_reaction(rxn_name, reactants, products):
+        """Add reaction to graph"""
+        graph.add_node(rxn_name, isreaction=True)
 
         for reactant in reactants:
             name = reactant.attrib.get('species')
-            graph.add_edge(reaction_name, name)
+            graph.add_edge(name, rxn_name)
 
         for product in products:
             name = product.attrib.get('species')
-            graph.add_edge(name, reaction_name)
+            graph.add_edge(rxn_name, name)
 
     reactions = get_listOfReactions(model)
     for e in reactions:
