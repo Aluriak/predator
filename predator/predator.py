@@ -51,9 +51,9 @@ def search_seeds_activate_targets_greedy(graph_data:str, start_seeds:iter=(), fo
     """
     if not targets:
         raise ValueError("search_seeds_activate_targets_greedy() requires targets. Use another function, search_seeds(), or provide targets.")
-    start_seeds_repr = ' '.join(f'seed({s}).' for s in start_seeds)
-    forb_repr = ' '.join(f'forbidden({s}).' for s in forbidden_seeds)
-    targets_repr = ' '.join(f'target({t}).' for t in targets)
+    start_seeds_repr = ' '.join(f'seed("{s}").' for s in start_seeds)
+    forb_repr = ' '.join(f'forbidden("{s}").' for s in forbidden_seeds)
+    targets_repr = ' '.join(f'target("{t}").' for t in targets)
     data_repr = graph_data + start_seeds_repr + forb_repr + targets_repr
     models = clyngor.solve(ASP_SRC_GREEDY_TARGET_SEED_SOLVING, inline=data_repr, options='--opt-mode=optN')
     models = opt_models_from_clyngor_answers(models.by_predicate.discard_quotes)
