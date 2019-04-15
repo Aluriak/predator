@@ -126,6 +126,18 @@ def read_SBML_network_as_simple_graph(filename):
     model = get_model(sbml)
     graph = nx.DiGraph()
 
+    def make_reaction(name, reactants, products):
+        "add reaction to graph"
+        graph.add_node(reaction_name, isreaction=True)
+
+        for reactant in reactants:
+            name = reactant.attrib.get('species')
+            graph.add_edge(reaction_name, name)
+
+        for product in products:
+            name = product.attrib.get('species')
+            graph.add_edge(name, reaction_name)
+
     reactions = get_listOfReactions(model)
     for e in reactions:
         tag = get_sbml_tag(e)
@@ -133,18 +145,11 @@ def read_SBML_network_as_simple_graph(filename):
             reactionId = e.attrib.get("id")
             reaction_name = 'R' + reactionId
             reversible = e.attrib.get("reversible") == 'true'
-            graph.add_node(reaction_name, isreaction=True, reversible=reversible)
-
             reactants = get_listOfReactants(e)
             products = get_listOfProducts(e)
-
-            for reactant in reactants:
-                name = reactant.attrib.get('species')
-                graph.add_edge(reaction_name, name)
-
-            for product in products:
-                name = product.attrib.get('species')
-                graph.add_edge(name, reaction_name)
+            make_reaction(reaction_name, reactants, products)
+            if reversible:
+                make_reaction('rev' + reaction_name, products, reactants)
 
     return graph
 
