@@ -2,10 +2,11 @@
 
 """
 from predator import graph_from_file, search_seeds, utils
+from predator import quoted_data
 
 
 def test_lattice_reaction():
-    graph = 'reactant((a;b),1). product((d;e),1). reaction(1).  reactant((b;c),2). product((e;f),2). reaction(2).'
+    graph = quoted_data('reactant((a;b),1). product((d;e),1). reaction(1).  reactant((b;c),2). product((e;f),2). reaction(2).')
     # utils.render_network(graph, 'todel.png')  # uncomment to help debugging
     expected_seeds_sets = {frozenset('bc')}
     assert expected_seeds_sets == set(search_seeds(graph, targets='ef', forbidden_seeds='e'))
@@ -24,6 +25,6 @@ def test_lattice_reaction():
 
 def test_impossible_case():
     "the code should return nothing when no solution is found"
-    graph = 'reactant((a;b),1). product((d;e),1). reaction(1).  reactant((b;c),2). product((e;f),2). reaction(2).'
+    graph = quoted_data('reactant((a;b),1). product((d;e),1). reaction(1).  reactant((b;c),2). product((e;f),2). reaction(2).')
     # utils.render_network(graph, 'todel.png')  # uncomment to help debugging
     assert not list(search_seeds(graph, forbidden_seeds={'a', 'd'}, targets={'d'}))

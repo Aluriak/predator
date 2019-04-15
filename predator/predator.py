@@ -6,6 +6,7 @@ import clyngor
 import networkx as nx
 import itertools
 from . import sbml as sbml_module
+from .utils import quoted, unquoted
 from collections import defaultdict
 from pkg_resources import resource_filename
 
@@ -51,12 +52,12 @@ def search_seeds_activate_targets_greedy(graph_data:str, start_seeds:iter=(), fo
     """
     if not targets:
         raise ValueError("search_seeds_activate_targets_greedy() requires targets. Use another function, search_seeds(), or provide targets.")
-    start_seeds_repr = ' '.join(f'seed("{s}").' for s in start_seeds)
-    targets_repr = ' '.join(f'target("{t}").' for t in targets)
-    forb_repr = ' '.join(f'forbidden("{s}").' for s in forbidden_seeds)
+    start_seeds_repr = ' '.join(f'seed({quoted(s)}).' for s in start_seeds)
+    targets_repr = ' '.join(f'target({quoted(t)}).' for t in targets)
+    forb_repr = ' '.join(f'forbidden({quoted(s)}).' for s in forbidden_seeds)
     data_repr = graph_data + start_seeds_repr + forb_repr + targets_repr
-    models = clyngor.solve(ASP_SRC_GREEDY_TARGET_SEED_SOLVING, inline=data_repr, options='--opt-mode=optN')
-    models = opt_models_from_clyngor_answers(models.by_predicate.discard_quotes)
+    models = clyngor.solve(ASP_SRC_GREEDY_TARGET_SEED_SOLVING, inline=data_repr, options='--opt-mode=optN').discard_quotes
+    models = opt_models_from_clyngor_answers(models.by_predicate)
     for model in models:
         seeds = frozenset(args[0] for args in model['seed'] if len(args) == 1)
         yield seeds
@@ -71,8 +72,8 @@ def search_seeds_activate_all(graph_data:str, start_seeds:iter=(), forbidden_see
     """
     if targets:
         raise ValueError("search_seeds_activate_all() does not handle targets. Use another method that supports it, or search_seeds().")
-    start_seeds_repr = ' '.join(f'seed({s}).' for s in start_seeds)
-    forbidden_repr = ' '.join(f'forbidden({s}).' for s in forbidden_seeds)
+    start_seeds_repr = ' '.join(f'seed({quoted(s)}).' for s in start_seeds)
+    forbidden_repr = ' '.join(f'forbidden({quoted(s)}).' for s in forbidden_seeds)
     assert isinstance(graph_data, str), graph_data
     sccs, scc_dag = compute_sccs(graph_data, graph_filename=graph_filename)
     roots = scc_dag[None]
@@ -83,8 +84,8 @@ def search_seeds_activate_all(graph_data:str, start_seeds:iter=(), forbidden_see
         # print('DATA:\n    ' + scc_data)
         # print('    ' + graph_data)
         # print()
-        models = clyngor.solve(ASP_SRC_SIMPLE_SEED_SOLVING, inline=graph_data + scc_data, options='--opt-mode=optN').discard_quotes
-        models = opt_models_from_clyngor_answers(models.by_predicate)
+        models = clyngor.solve(ASP_SRC_SIMPLE_SEED_SOLVING, inline=graph_data + scc_data, options='--opt-mode=optN')
+        models = opt_models_from_clyngor_answers(models.by_predicate.discard_quotes)
         scc_seeds[scc_name] = tuple(frozenset(args[0] for args in model.get('seed', ())) for model in models)
         # print('OUTPUT SEEDS:', scc_seeds[scc_name])
     # generate all possibilities

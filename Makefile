@@ -4,7 +4,7 @@ run:
 
 t: test
 test:
-	python -m pytest -vv test --doctest-module
+	python -m pytest -vv test predator --doctest-module
 
 black:
 	black predator
