@@ -5,7 +5,7 @@
 import os
 import argparse
 from . import graph as graph_module
-from . import predator, utils
+from . import predator, utils, __version__, print_info
 
 
 def existant_file(filepath:str) -> str:
@@ -20,6 +20,9 @@ def cli_parser() -> argparse.ArgumentParser:
     # positionnals
     parser.add_argument('infile', type=existant_file,
                         help="SBML or ASP file containing the graph data")
+    # meta
+    parser.add_argument('--info', action='store_true',
+                        help="Print general info about the input graph, and exit")
     # arguments
     parser.add_argument('--targets-file', '-tf', type=str, default=None,
                         help="file containing one target per line")
@@ -67,6 +70,9 @@ def get_all_ids(inline, fname) -> frozenset:
 if __name__ == '__main__':
     args = parse_args()
     print('DEBUG args =', args)
+    if args.info:
+        print_info(args.infile, args.visualize, args.visualize_without_reactions)
+        exit()
     graph = graph_module.graph_from_file(
         args.infile,
         use_topological_injections=not args.no_topological_injection,
