@@ -46,6 +46,8 @@ def cli_parser() -> argparse.ArgumentParser:
                         help="Do not use topological injection found in sbml data")
     parser.add_argument('--semantic-injection', action='store_true',
                         help="Use semantic injection found in sbml data")
+    parser.add_argument('--targets-are-forbidden', '-taf', action='store_true',
+                        help="Targets are added to forbidden seeds")
 
     return parser
 
@@ -75,6 +77,7 @@ if __name__ == '__main__':
     targets = get_all_ids(args.targets, args.targets_file)
     seeds = get_all_ids(args.seeds, args.seeds_file)
     forbidden_seeds = get_all_ids(args.forbidden_seeds, args.forbidden_seeds_file)
+    if args.targets_are_forbidden:  forbidden_seeds |= targets
     # main work
     union_over_seeds, intersection_over_seeds = set(), set()
     first_loop = True  # only true during the first iteration of the next loop
