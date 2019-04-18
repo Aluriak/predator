@@ -37,6 +37,8 @@ def cli_parser() -> argparse.ArgumentParser:
                         help="file containing one forbidden seed per line")
     parser.add_argument('--forbidden-seeds', '-fs', nargs='*', type=str, default=[],
                         help="metabolites that cannot be seed in the graph")
+    parser.add_argument('--export', '-e', type=str, default=None,
+                        help="file export of the ASP instance")
     parser.add_argument('--visualize', '-v', type=str, default=None,
                         help="png file to render the input graph in (default: don't render)")
     parser.add_argument('--visualize-without-reactions', '-vr', type=str, default=None,
@@ -79,6 +81,9 @@ if __name__ == '__main__':
         use_topological_injections=not args.no_topological_injection,
         use_semantic_injection=args.semantic_injection
     )
+    if args.export:
+        with open(args.export, "w") as f:
+            f.write(graph)
     # compute available targets (union of --targets and --targets-file)
     #  (and do the same for (forbidden) seeds)
     targets = get_all_ids(args.targets, args.targets_file)
