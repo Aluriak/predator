@@ -15,6 +15,17 @@ obj_property(edge,arrowhead,vee).
 """
 
 
+def solve(*args, **kwargs):
+    "Wrapper around clyngor.solve"
+    try:
+        return clyngor.solve(*args, **kwargs)
+    except FileNotFoundError as err:
+        if 'clingo' in err.args[0]:
+            print('ERROR binary file clingo is not accessible in the PATH.')
+            exit(1)
+        else:  raise err
+
+
 def render_network(graph:str, outfile:str, with_reactions=True):
     "Render given graph using biseau, as a single image saved with given filename."
     import biseau

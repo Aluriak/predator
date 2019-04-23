@@ -2,7 +2,6 @@
 
 """
 
-import clyngor
 from predator import graph_from_file, search_seeds, utils
 from predator import quoted_data
 

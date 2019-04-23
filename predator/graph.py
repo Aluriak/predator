@@ -4,7 +4,6 @@
 
 
 import os
-import clyngor
 import networkx as nx
 from . import sbml, utils
 from collections import defaultdict
@@ -36,7 +35,7 @@ def nxgraph_from_file(fname:str) -> str:
 def nx_from_asp(asp:str, directed:bool=True):
     "Return a nx.Digraph describing the graph given in ASP format"
     graph = (nx.Digraph if directed else nx.Graph)()
-    models = clyngor.solve(inline=asp).by_predicate.discard_quotes
+    models = utils.solve(inline=asp).by_predicate.discard_quotes
     for model in models:
         for args in model.get('node', ()):
             if len(args) == 1:

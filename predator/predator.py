@@ -2,11 +2,10 @@
 
 """
 import math
-import clyngor
 import networkx as nx
 import itertools
 from . import sbml as sbml_module
-from .utils import quoted, unquoted
+from .utils import quoted, unquoted, solve
 from collections import defaultdict
 from pkg_resources import resource_filename
 
@@ -56,7 +55,7 @@ def search_seeds_activate_targets_greedy(graph_data:str, start_seeds:iter=(), fo
     targets_repr = ' '.join(f'target({quoted(t)}).' for t in targets)
     forb_repr = ' '.join(f'forbidden({quoted(s)}).' for s in forbidden_seeds)
     data_repr = graph_data + start_seeds_repr + forb_repr + targets_repr
-    models = clyngor.solve(ASP_SRC_GREEDY_TARGET_SEED_SOLVING, inline=data_repr, options='--opt-mode=optN').discard_quotes
+    models = solve(ASP_SRC_GREEDY_TARGET_SEED_SOLVING, inline=data_repr, options='--opt-mode=optN').discard_quotes
     models = opt_models_from_clyngor_answers(models.by_predicate)
     for model in models:
         seeds = frozenset(args[0] for args in model['seed'] if len(args) == 1)
@@ -84,7 +83,7 @@ def search_seeds_activate_all(graph_data:str, start_seeds:iter=(), forbidden_see
         # print('DATA:\n    ' + scc_data)
         # print('    ' + graph_data)
         # print()
-        models = clyngor.solve(ASP_SRC_SIMPLE_SEED_SOLVING, inline=graph_data + scc_data, options='--opt-mode=optN')
+        models = solve(ASP_SRC_SIMPLE_SEED_SOLVING, inline=graph_data + scc_data, options='--opt-mode=optN')
         models = opt_models_from_clyngor_answers(models.by_predicate.discard_quotes)
         scc_seeds[scc_name] = tuple(frozenset(args[0] for args in model.get('seed', ())) for model in models)
         # print('OUTPUT SEEDS:', scc_seeds[scc_name])
@@ -107,7 +106,7 @@ def compute_sccs(graph_data:str, graph_filename:str=None) -> [{str}]:
 
     """
     if not graph_filename or True:  # the networkx method is not yet implemented
-        models = clyngor.solve(ASP_SRC_ENUM_CC, inline=graph_data)
+        models = solve(ASP_SRC_ENUM_CC, inline=graph_data)
         for model in models.by_predicate:
             print('SCC MODEL:', model)
             roots = frozenset(args[0] for args in model.get('noinput', ()) if len(args) == 1)
