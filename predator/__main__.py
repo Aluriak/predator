@@ -82,8 +82,12 @@ if __name__ == '__main__':
         use_semantic_injection=args.semantic_injection
     )
     if args.export:
+        sccs, _ = predator.compute_sccs(graph)
+        scc_repr = '\n'.join(f'scc({scc_name},{node}).'
+                            for scc_name, nodes in sccs.items()
+                            for node in nodes)
         with open(args.export, "w") as f:
-            f.write(graph)
+            f.write(graph + '\n' + scc_repr)
     # compute available targets (union of --targets and --targets-file)
     #  (and do the same for (forbidden) seeds)
     targets = get_all_ids(args.targets, args.targets_file)
