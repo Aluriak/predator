@@ -1,6 +1,7 @@
 """Utilitaries"""
 
 import clyngor
+from collections import defaultdict
 
 
 BISEAU_VIZ = """
@@ -26,6 +27,52 @@ def solve(*args, **kwargs):
         else:  raise err
 
 
+def inverted_dag(dag:dict) -> [str]:
+    """Return the same dag, but with edges reversed. Key None, if exists,
+    must be associated with roots.
+
+    """
+    revdag = defaultdict(set)
+    for pred, succs in dag.items():
+        for succ in succs:
+            if pred is None:
+                revdag[succ]  # succ is now terminal
+            else:
+                revdag[succ].add(pred)  # build the reverse link
+                revdag[pred]  # ensure that predecessor exists
+            if succ not in dag:
+                revdag[None].add(succ)
+        if not succs:
+            revdag[None].add(pred)
+    return dict(revdag)
+
+def get_terminal_nodes(dag:dict) -> [str]:
+    """Yield terminal nodes of given dag, with doublons.
+    Key None must be associated with roots
+    """
+    roots = list(dag[None])
+    while roots:
+        root = roots.pop()
+        if root in dag and dag[root]:
+            for sub in dag[root]:
+                roots.append(sub)
+        else:
+            yield root
+
+
+def remove_terminal(node, dag:dict, parents:set=None):
+    "Modify dag in-place, removing given node as if it was a terminal"
+    if not parents:
+        parents = set()
+        for pred, succs in dag.items():
+            if node in succs:
+                parents.add(pred)
+    for parent in parents:
+        dag[parent].remove(node)
+    if node in dag:
+        del dag[node]
+
+
 def render_network(graph:str, outfile:str, with_reactions=True):
     "Render given graph using biseau, as a single image saved with given filename."
     import biseau
@@ -49,9 +96,11 @@ def quoted(string:str) -> str:
     '"a$""'
     >>> quoted('\\"a"').replace('\\', '$')
     '"$"a$""'
+    >>> quoted('"').replace('\\', '$')
+    '"$""'
 
     """
-    if string[0] == '"' and string[-2] != '\\' and string[-1] == '"':
+    if len(string) > 1 and string[0] == '"' and string[-2] != '\\' and string[-1] == '"':
         return string
     else:
         return '"' + string.replace('\\"', '"').replace('"', '\\"') + '"'
