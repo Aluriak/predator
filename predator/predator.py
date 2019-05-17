@@ -357,7 +357,7 @@ def compute_sccs(graph_data:str, graph_filename:str=None) -> [{str}]:
         models = solve(ASP_SRC_ENUM_CC, inline=graph_data)
         for model in models.by_predicate:
             print('SCC MODEL:', model)
-            roots = frozenset(args[0] for args in model.get('noinput', ()) if len(args) == 1)
+            roots = set(args[0] for args in model.get('noinput', ()) if len(args) == 1)
             sccs = defaultdict(set)  # SCC identifier: nodes in SCC
             for scc_name, node in model.get('scc', ()):
                 sccs[scc_name].add(node)
