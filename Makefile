@@ -3,8 +3,11 @@ run:
 	python -m predator networks/toy_1.sbml -v viz.png -vr viz-nor.png
 
 t: test
+tf: testff
 test:
 	python -m pytest -vv test predator --doctest-module
+testff:  # --failed-first and --exitfirst argument
+	python -m pytest -vv test predator --failed-first --exitfirst --doctest-module
 
 black:
 	black predator
