@@ -13,6 +13,7 @@ from pkg_resources import resource_filename
 ASP_SRC_ENUM_CC = resource_filename(__name__, 'asp/enum-cc.lp')
 ASP_SRC_SIMPLE_SEED_SOLVING = resource_filename(__name__, 'asp/simple-seed-solving.lp')
 ASP_SRC_GREEDY_TARGET_SEED_SOLVING = resource_filename(__name__, 'asp/greedy-target-seed-solving.lp')
+ASP_SRC_GREEDY_TARGET_SEED_SOLVING_SEED_MINIMALITY = resource_filename(__name__, 'asp/greedy-target-seed-solving-seed-minimality-constraint.lp')
 ASP_SRC_ITERATIVE_TARGET_SEED_SOLVING__AIM = resource_filename(__name__, 'asp/iterative-target-seed-solving--aim.lp')
 import os
 assert os.path.exists(ASP_SRC_ENUM_CC), ASP_SRC_ENUM_CC
@@ -303,7 +304,8 @@ def search_seeds_activate_targets_greedy(graph_data:str, start_seeds:iter=(), fo
     targets_repr = ' '.join(f'target({quoted(t)}).' for t in targets)
     forb_repr = ' '.join(f'forbidden({quoted(s)}).' for s in forbidden_seeds)
     data_repr = graph_data + start_seeds_repr + forb_repr + targets_repr
-    models = solve(ASP_SRC_GREEDY_TARGET_SEED_SOLVING, inline=data_repr, options='--opt-mode=optN').discard_quotes
+    models = solve((ASP_SRC_GREEDY_TARGET_SEED_SOLVING, ASP_SRC_GREEDY_TARGET_SEED_SOLVING_SEED_MINIMALITY),
+                   inline=data_repr, options='--opt-mode=optN').discard_quotes
     models = opt_models_from_clyngor_answers(models.by_predicate)
     for model in models:
         seeds = frozenset(args[0] for args in model['seed'] if len(args) == 1)

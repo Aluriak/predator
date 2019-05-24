@@ -1,5 +1,8 @@
 % Search of the minimal set of seeds in all graph activating all targets.
 %  This is a greedy method, that is not expected to scale.
+% It should be grounded with another encoding containing optimization criteria,
+%   such as greedy-target-seed-solving-seed-minimality-constraint.lp for simple search,
+%   or pareto_utnu.lp for pareto exploration with the asprin system.
 % INPUTS:
 %   - seed(S): node S is a seed
 %   - forbidden(S): node S cannot be a seed
@@ -22,10 +25,6 @@ activated(S) :- seed(S).
 
 % Choose a set of seeds among metabolites of the current SCC.
 { seed(M): metabolite(M), not forbidden(M) }.
-
-% Ensure its minimality
-nb_seed(N) :- N={seed(_)}.
-#minimize{N:nb_seed(N)}.
 
 % Discard any model that is not activating all targets.
 :- target(M) ; not activated(M).
