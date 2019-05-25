@@ -36,7 +36,7 @@ def opt_models_from_clyngor_answers(answers:iter, *, smaller_is_best:bool=True):
 
 def search_seeds(graph_data:str, start_seeds:iter=(), forbidden_seeds:iter=(),
                  targets:set=(), graph_filename:str=None, explore_pareto:bool=False,
-                 **kwargs) -> [str]:
+                 **kwargs) -> [{set}]:
     "Wrapper around all seeds search methods. The used methods depends of given parameters."
     if not targets:  # no target, just activate everything
         func = search_seeds_activate_all
@@ -315,7 +315,7 @@ def _compute_hypothesis_from_scc(scc_name:str, scc_encoding:set, sccs:dict, rev_
         yield new_seeds, scc_reactions, new_fullfilled
 
 
-def search_seeds_activate_targets_greedy(graph_data:str, start_seeds:iter=(), forbidden_seeds:set=(), targets:set=(), graph_filename:str=None) -> [str]:
+def search_seeds_activate_targets_greedy(graph_data:str, start_seeds:iter=(), forbidden_seeds:set=(), targets:set=(), graph_filename:str=None) -> [{set}]:
     """Yield the set of seeds for each found solution.
 
     This implements the activation of targets: find the minimum sets
@@ -337,7 +337,7 @@ def search_seeds_activate_targets_greedy(graph_data:str, start_seeds:iter=(), fo
         yield seeds
 
 
-def search_seeds_activate_all(graph_data:str, start_seeds:iter=(), forbidden_seeds:set=(), targets:set=(), graph_filename:str=None) -> [str]:
+def search_seeds_activate_all(graph_data:str, start_seeds:iter=(), forbidden_seeds:set=(), targets:set=(), graph_filename:str=None) -> [{set}]:
     """Yield the set of seeds for each found solution.
 
     This implements the most simple solution: no targets, find the minimum sets
