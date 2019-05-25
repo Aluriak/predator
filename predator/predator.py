@@ -8,17 +8,20 @@ A routine should have the following signature:
 def search_seed_method_name(graph_data:str, start_seeds:iter=(), forbidden_seeds:set=(), targets:set=(), graph_filename:str=None, enum_mode:EnumMode=EnumMode.Enumeration) -> [{str}]
 
 It can have other parameters, that search_seeds() must take care of.
-The yielded values are sets of strings, each set describing a solution, i.e. a set of seed names that fullfill the asked conditions.
+The yielded values are sets of strings, each set describing a solution,
+i.e. a set of seed names that fullfill the asked conditions.
 
 """
 import math
 import networkx as nx
 import itertools
+from clyngor import opt_models_from_clyngor_answers
 from . import sbml as sbml_module
 from .utils import quoted, unquoted, solve, get_terminal_nodes, inverted_dag, remove_terminal
 from collections import defaultdict
 from pkg_resources import resource_filename
 from enum import Enum
+
 
 class EnumMode(Enum):
     "The mode of solution enumeration"
@@ -42,19 +45,6 @@ ASP_SRC_PARETO_OPTIMIZATIONS = resource_filename(__name__, 'asp/pareto_utnu.lp')
 import os
 assert os.path.exists(ASP_SRC_ENUM_CC), ASP_SRC_ENUM_CC
 assert os.path.exists(ASP_SRC_SIMPLE_SEED_SOLVING), ASP_SRC_SIMPLE_SEED_SOLVING
-
-
-def opt_models_from_clyngor_answers(answers:iter, *, smaller_is_best:bool=True):
-    "Return tuple of optimal models found by clingor.solve, when option '--opt-mode=optN' is given"
-    best_opt, models = math.inf, []
-    if not smaller_is_best:  best_opt *= -1
-    for model, opt in answers.with_optimization:
-        # print('OPT, MODEL:', opt[0], model)
-        if (opt[0] < best_opt) if smaller_is_best else (opt[0] > best_opt):
-            best_opt, models = opt[0], []  # model will be given again as last model, so no need to include it twice
-        else:
-            models.append(model)
-    return tuple(models)
 
 
 def search_seeds(graph_data:str, start_seeds:iter=(), forbidden_seeds:iter=(),
