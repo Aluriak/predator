@@ -1,10 +1,11 @@
+% Asprin definitions to ground with greedy seeds search to explore the pareto
+%  fronts of the three metrics: number of seeds, size of scope,
+%  number of targets that are also seeds.
+
 % Number of seeds
 nb(seed,N) :- N={seed(_)}.
 nb(activated,N) :- N={activated(_)}.
 nb(target,N) :- N={target(_)}.
-% #minimize{N:nb_seed(N)}.
-
-:- target(M), not activated(M).
 
 % Preferences
 % maximize size of scope
