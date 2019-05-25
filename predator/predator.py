@@ -41,7 +41,8 @@ ASP_SRC_SIMPLE_SEED_SOLVING = resource_filename(__name__, 'asp/simple-seed-solvi
 ASP_SRC_GREEDY_TARGET_SEED_SOLVING = resource_filename(__name__, 'asp/greedy-target-seed-solving.lp')
 ASP_SRC_GREEDY_TARGET_SEED_SOLVING_SEED_MINIMALITY = resource_filename(__name__, 'asp/greedy-target-seed-solving-seed-minimality-constraint.lp')
 ASP_SRC_ITERATIVE_TARGET_SEED_SOLVING__AIM = resource_filename(__name__, 'asp/iterative-target-seed-solving--aim.lp')
-ASP_SRC_PARETO_OPTIMIZATIONS = resource_filename(__name__, 'asp/pareto_utnu.lp')
+ASP_SRC_PARETO_OPTIMIZATIONS = resource_filename(__name__, 'asp/pareto_utnu_scope_seeds.lp')
+ASP_SRC_PARETO_OPTIMIZATIONS_ALL = resource_filename(__name__, 'asp/pareto_utnu_avoid_targets_as_seeds.lp')
 import os
 assert os.path.exists(ASP_SRC_ENUM_CC), ASP_SRC_ENUM_CC
 assert os.path.exists(ASP_SRC_SIMPLE_SEED_SOLVING), ASP_SRC_SIMPLE_SEED_SOLVING
@@ -63,7 +64,9 @@ def search_seeds(graph_data:str, start_seeds:iter=(), forbidden_seeds:iter=(),
     yield from func(graph_data, frozenset(start_seeds), frozenset(forbidden_seeds), frozenset(targets), graph_filename, enum_mode, **kwargs)
 
 
-def search_pareto_front(graph_data:str, start_seeds:iter=(), forbidden_seeds:set=(), targets:set=(), graph_filename:str=None, enum_mode:EnumMode=EnumMode.Enumeration) -> [set]:
+def search_pareto_front(graph_data:str, start_seeds:iter=(), forbidden_seeds:set=(), targets:set=(),
+                        graph_filename:str=None, enum_mode:EnumMode=EnumMode.Enumeration,
+                        avoid_targets_as_seeds:bool=False) -> [set]:
     """Yield the set of seeds for each found solution on the pareto front."""
     if enum_mode in {EnumMode.Union, EnumMode.Intersection}:
         raise ValueError(f"Mode {str(enum_mode)} is not supported for this routine.")
@@ -78,8 +81,9 @@ def search_pareto_front(graph_data:str, start_seeds:iter=(), forbidden_seeds:set
     targets_repr = ' '.join(f'target({quoted(t)}).' for t in targets)
     forb_repr = ' '.join(f'forbidden({quoted(s)}).' for s in forbidden_seeds)
     data_repr = graph_data + start_seeds_repr + targets_repr + forb_repr
-
-    files = ASP_SRC_PARETO_OPTIMIZATIONS, ASP_SRC_GREEDY_TARGET_SEED_SOLVING
+    # solving
+    pareto_constraints = ASP_SRC_PARETO_OPTIMIZATIONS_ALL if avoid_targets_as_seeds else ASP_SRC_PARETO_OPTIMIZATIONS
+    files = pareto_constraints, ASP_SRC_GREEDY_TARGET_SEED_SOLVING
     models = solve(files, inline=data_repr, clingo_bin_path='asprin').with_optimality.discard_quotes.by_predicate
     for model, opts, isoptimum in models:
         if isoptimum:
