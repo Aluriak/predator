@@ -2,9 +2,16 @@
 
 """
 
-from predator import graph_from_file, search_seeds, utils
+from predator import graph_from_file, search_seeds, utils, EnumMode
 from predator import quoted_data
 
+
+def test_basic_EnumMode_API():
+    for obj in EnumMode:
+        assert getattr(EnumMode, obj.value.title()) is EnumMode(obj.value)
+    assert EnumMode('enumeration').clingo_option == ''
+    assert EnumMode('union').clingo_option == '--enum-mode brave'
+    assert EnumMode('intersection').clingo_option == '--enum-mode cautious'
 
 def test_simple_reaction():
     graph = quoted_data('reactant(a,r). product(p,r). reaction(r).')
@@ -25,6 +32,10 @@ def test_double_reactant_with_feedback_reaction():
     # utils.render_network(graph, 'todel.png')  # uncomment to help debugging
     expected_seeds_sets = {frozenset('ab'), frozenset('pb')}
     assert expected_seeds_sets == set(search_seeds(graph))
+    expected_seeds_sets = {frozenset('abp')}
+    assert expected_seeds_sets == set(search_seeds(graph, enum_mode='union'))
+    expected_seeds_sets = {frozenset('b')}
+    assert expected_seeds_sets == set(search_seeds(graph, enum_mode='intersection'))
 
 
 def test_loop():

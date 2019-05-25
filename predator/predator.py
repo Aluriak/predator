@@ -1,5 +1,15 @@
 """Routines to search for seeds.
 
+The main API is search_seeds() function, that dispatch call
+to the suited routine depending of overall parameters.
+
+A routine should have the following signature:
+
+def search_seed_method_name(graph_data:str, start_seeds:iter=(), forbidden_seeds:set=(), targets:set=(), graph_filename:str=None, enum_mode:EnumMode=EnumMode.Enumeration) -> [{str}]
+
+It can have other parameters, that search_seeds() must take care of.
+The yielded values are sets of strings, each set describing a solution, i.e. a set of seed names that fullfill the asked conditions.
+
 """
 import math
 import networkx as nx
@@ -8,6 +18,19 @@ from . import sbml as sbml_module
 from .utils import quoted, unquoted, solve, get_terminal_nodes, inverted_dag, remove_terminal
 from collections import defaultdict
 from pkg_resources import resource_filename
+from enum import Enum
+
+class EnumMode(Enum):
+    "The mode of solution enumeration"
+    Enumeration, Union, Intersection = 'enumeration', 'union', 'intersection'
+
+    @property
+    def clingo_option(self) -> str:
+        return {
+            'enumeration': '',
+            'union': '--enum-mode brave',
+            'intersection': '--enum-mode cautious',
+        }[self.value]
 
 
 ASP_SRC_ENUM_CC = resource_filename(__name__, 'asp/enum-cc.lp')
@@ -35,21 +58,25 @@ def opt_models_from_clyngor_answers(answers:iter, *, smaller_is_best:bool=True):
 
 
 def search_seeds(graph_data:str, start_seeds:iter=(), forbidden_seeds:iter=(),
-                 targets:set=(), graph_filename:str=None, explore_pareto:bool=False,
-                 **kwargs) -> [{set}]:
+                 targets:set=(), graph_filename:str=None, enum_mode:str=EnumMode.Enumeration,
+                 explore_pareto:bool=False, greedy:bool=False, **kwargs) -> [{set}]:
     "Wrapper around all seeds search methods. The used methods depends of given parameters."
+    enum_mode = EnumMode(enum_mode)
     if not targets:  # no target, just activate everything
         func = search_seeds_activate_all
     elif explore_pareto:  # explore the pareto front
         func = search_pareto_front
+    elif greedy:  # non efficient search of targets
+        func = search_seeds_activate_targets_greedy  # TODO: this is not tested…
     else:  # efficient search of targets
-        func = search_seeds_activate_targets_greedy  # TODO: use the non-greedy solution
-        func = search_seeds_activate_targets_iterative  # TODO: implement that
-    yield from func(graph_data, frozenset(start_seeds), frozenset(forbidden_seeds), frozenset(targets), graph_filename, **kwargs)
+        func = search_seeds_activate_targets_iterative
+    yield from func(graph_data, frozenset(start_seeds), frozenset(forbidden_seeds), frozenset(targets), graph_filename, enum_mode, **kwargs)
 
 
-def search_pareto_front(graph_data:str, start_seeds:iter=(), forbidden_seeds:set=(), targets:set=(), graph_filename:str=None) -> [set]:
+def search_pareto_front(graph_data:str, start_seeds:iter=(), forbidden_seeds:set=(), targets:set=(), graph_filename:str=None, enum_mode:EnumMode=EnumMode.Enumeration) -> [set]:
     """Yield the set of seeds for each found solution on the pareto front."""
+    if enum_mode in {EnumMode.Union, EnumMode.Intersection}:
+        raise ValueError(f"Mode {str(enum_mode)} is not supported for this routine.")
     # treat parameters
     if start_seeds & forbidden_seeds:
         raise ValueError(f"start_seeds and forbidden_seeds shares some seeds: {start_seeds & forbidden_seeds}.")
@@ -70,8 +97,8 @@ def search_pareto_front(graph_data:str, start_seeds:iter=(), forbidden_seeds:set
 
 
 def search_seeds_activate_targets_iterative(graph_data:str, start_seeds:iter=(), forbidden_seeds:set=(), targets:set=(),
-                                            graph_filename:str=None, compute_optimal_solutions:bool=False,
-                                            filter_included_solutions:bool=True) -> [set]:
+                                            graph_filename:str=None, enum_mode:EnumMode=EnumMode.Enumeration,
+                                            compute_optimal_solutions:bool=False, filter_included_solutions:bool=True) -> [set]:
     """Yield the set of seeds for each found solution.
 
     compute_optimal_solutions -- if True, will post-process the solutions to get
@@ -133,6 +160,8 @@ def search_seeds_activate_targets_iterative(graph_data:str, start_seeds:iter=(),
     5. All Hypothesis objects are stored globally, and an SCC needs first to extract those that concern itself.
 
     """
+    if enum_mode in {EnumMode.Union, EnumMode.Intersection}:
+        raise ValueError(f"Mode {str(enum_mode)} is not supported for this routine.")
     print(start_seeds, forbidden_seeds, start_seeds & forbidden_seeds)
     if start_seeds & forbidden_seeds:
         raise ValueError(f"start_seeds and forbidden_seeds shares some seeds: {start_seeds & forbidden_seeds}.")
@@ -315,12 +344,17 @@ def _compute_hypothesis_from_scc(scc_name:str, scc_encoding:set, sccs:dict, rev_
         yield new_seeds, scc_reactions, new_fullfilled
 
 
-def search_seeds_activate_targets_greedy(graph_data:str, start_seeds:iter=(), forbidden_seeds:set=(), targets:set=(), graph_filename:str=None) -> [{set}]:
+def search_seeds_activate_targets_greedy(graph_data:str, start_seeds:iter=(), forbidden_seeds:set=(), targets:set=(),
+                                         graph_filename:str=None, enum_mode:EnumMode=EnumMode.Enumeration, compute_optimal_solutions:bool=False,
+                                         filter_included_solutions:bool=True) -> [{set}]:
     """Yield the set of seeds for each found solution.
 
     This implements the activation of targets: find the minimum sets
     of seeds that activate all targets.
     This is a greedy implementation. Do not expect it to work on a large dataset.
+
+    Both compute_optimal_solutions and filter_included_solutions are unused.
+    They are here only to mimic search_seeds_activate_targets_iterative API.
 
     """
     if not targets:
@@ -330,14 +364,14 @@ def search_seeds_activate_targets_greedy(graph_data:str, start_seeds:iter=(), fo
     forb_repr = ' '.join(f'forbidden({quoted(s)}).' for s in forbidden_seeds)
     data_repr = graph_data + start_seeds_repr + forb_repr + targets_repr
     models = solve((ASP_SRC_GREEDY_TARGET_SEED_SOLVING, ASP_SRC_GREEDY_TARGET_SEED_SOLVING_SEED_MINIMALITY),
-                   inline=data_repr, options='--opt-mode=optN').discard_quotes
+                   inline=data_repr, options='--opt-mode=optN ' + enum_mode.clingo_option).discard_quotes
     models = opt_models_from_clyngor_answers(models.by_predicate)
     for model in models:
         seeds = frozenset(args[0] for args in model['seed'] if len(args) == 1)
         yield seeds
 
 
-def search_seeds_activate_all(graph_data:str, start_seeds:iter=(), forbidden_seeds:set=(), targets:set=(), graph_filename:str=None) -> [{set}]:
+def search_seeds_activate_all(graph_data:str, start_seeds:iter=(), forbidden_seeds:set=(), targets:set=(), graph_filename:str=None, enum_mode:EnumMode=EnumMode.Enumeration) -> [{set}]:
     """Yield the set of seeds for each found solution.
 
     This implements the most simple solution: no targets, find the minimum sets
@@ -358,15 +392,19 @@ def search_seeds_activate_all(graph_data:str, start_seeds:iter=(), forbidden_see
         # print('DATA:\n    ' + scc_data)
         # print('    ' + graph_data)
         # print()
-        models = solve(ASP_SRC_SIMPLE_SEED_SOLVING, inline=graph_data + scc_data, options='--opt-mode=optN')
+        models = solve(ASP_SRC_SIMPLE_SEED_SOLVING, inline=graph_data + scc_data, options='--opt-mode=optN ' + enum_mode.clingo_option, delete_tempfile=False)
         models = opt_models_from_clyngor_answers(models.by_predicate.discard_quotes)
         scc_seeds[scc_name] = tuple(frozenset(args[0] for args in model.get('seed', ())) for model in models)
         # print('OUTPUT SEEDS:', scc_seeds[scc_name])
     # generate all possibilities
-    seed_combinations = tuple(itertools.product(*scc_seeds.values()))
-    for idx, seeds_sets in enumerate(seed_combinations, start=1):
-        # seeds_set is a combination of possible set of seeds for each SCC
-        yield frozenset.union(*seeds_sets)
+    sets_of_seeds_sets = scc_seeds.values()
+    # seeds_set is a combination of possible set of seeds for each SCC
+    seed_combinations = (frozenset.union(*seeds_sets) for seeds_sets in itertools.product(*sets_of_seeds_sets))
+    if enum_mode is EnumMode.Union:
+        seed_combinations = [frozenset.union(*seed_combinations)]
+    elif enum_mode is EnumMode.Intersection:
+        seed_combinations = [frozenset.intersection(*seed_combinations)]
+    yield from seed_combinations
 
 
 def compute_sccs(graph_data:str, graph_filename:str=None) -> [{str}]:

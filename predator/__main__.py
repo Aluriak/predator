@@ -43,11 +43,15 @@ def cli_parser() -> argparse.ArgumentParser:
                         help="png file to render the input graph in (default: don't render)")
     parser.add_argument('--visualize-without-reactions', '-vr', type=str, default=None,
                         help="png file to render, without reactions, the input graph in (default: don't render)")
+
+    # flags groups
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('--union', action='store_true',
+                       help="Print the union of all solutions")
+    group.add_argument('--intersection', action='store_true',
+                       help="Print the intersection of all solutions")
+
     # flags
-    parser.add_argument('--union', action='store_true',
-                        help="Print the union of all solutions")
-    parser.add_argument('--intersection', action='store_true',
-                        help="Print the intersection of all solutions")
     parser.add_argument('--no-topological-injection', action='store_true',
                         help="Do not use topological injection found in sbml data")
     parser.add_argument('--semantic-injection', action='store_true',
@@ -97,21 +101,15 @@ if __name__ == '__main__':
     targets = get_all_ids(args.targets, args.targets_file)
     seeds = get_all_ids(args.seeds, args.seeds_file)
     forbidden_seeds = get_all_ids(args.forbidden_seeds, args.forbidden_seeds_file)
+    enum_mode = 'enumeration'
+    if args.union:  enum_mode = 'union'
+    if args.intersection:  enum_mode = 'intersection'
     if args.targets_are_forbidden:  forbidden_seeds |= targets
     # main work
-    union_over_seeds, intersection_over_seeds = set(), set()
-    first_loop = True  # only true during the first iteration of the next loop
-    for idx, seeds in enumerate(predator.search_seeds(graph, seeds, forbidden_seeds, targets, explore_pareto=args.pareto), start=1):
-        if args.union:  union_over_seeds |= seeds
-        if args.intersection:
-            if first_loop:  intersection_over_seeds = seeds
-            else:           intersection_over_seeds &= seeds
+    for idx, seeds in enumerate(predator.search_seeds(graph, seeds, forbidden_seeds, targets, enum_mode=enum_mode, explore_pareto=args.pareto), start=1):
         repr_seeds = ', '.join(map(str, seeds))
         print(f"Solution {idx}:\n{repr_seeds}\n")
-        first_loop = False
     print('end of solutions.')
-    if args.union:  print('\nUnion:', ', '.join(union_over_seeds))
-    if args.intersection:  print('\nIntersection:', ', '.join(intersection_over_seeds))
     if args.visualize:
         print('Input graph rendered in', utils.render_network(graph, args.visualize, with_reactions=True))
     if args.visualize_without_reactions:
