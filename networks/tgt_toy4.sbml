@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<inputs date="2013-May">
+    <target-compounds>
+            <species id="k" name="k" compartment="c" boundaryCondition="false"/>
+            <species id="q" name="q" compartment="c" boundaryCondition="false"/>
+  </target-compounds>
+</inputs>
