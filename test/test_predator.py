@@ -45,8 +45,9 @@ def test_double_reactant_with_feedback_reaction():
 def test_loop():
     graph = quoted_data('reactant(a,1). product(b,1). reaction(1).  reactant(b,2). product(a,2). reaction(2).')
     # utils.render_network(graph, 'todel.png')  # uncomment to help debugging
-    expected_seeds_sets = {frozenset('a'), frozenset('b')}
-    assert expected_seeds_sets == set(search_seeds(graph))
+    assert {frozenset('a'), frozenset('b')} == set(search_seeds(graph))
+    assert {frozenset('ab')} == set(search_seeds(graph, enum_mode='union'))
+    assert {frozenset()} == set(search_seeds(graph, enum_mode='intersection'))
 
 
 def test_with_seeds_and_forbidden():

@@ -35,6 +35,14 @@ class EnumMode(Enum):
             'intersection': '--enum-mode cautious',
         }[self.value]
 
+    @property
+    def frozenset_operation(self) -> str:
+        return {
+            'enumeration': lambda sets: sets,
+            'union': lambda sets: {frozenset.union(*sets)},
+            'intersection': lambda sets: {frozenset.intersection(*sets)},
+        }[self.value]
+
 
 ASP_SRC_ENUM_CC = resource_filename(__name__, 'asp/enum-cc.lp')
 ASP_SRC_SIMPLE_SEED_SOLVING = resource_filename(__name__, 'asp/simple-seed-solving.lp')
@@ -157,8 +165,6 @@ def search_seeds_activate_targets_iterative(graph_data:str, start_seeds:iter=(),
     5. All Hypothesis objects are stored globally, and an SCC needs first to extract those that concern itself.
 
     """
-    if enum_mode in {EnumMode.Union, EnumMode.Intersection}:
-        raise ValueError(f"Mode {str(enum_mode)} is not supported for this routine.")
     print(start_seeds, forbidden_seeds, start_seeds & forbidden_seeds)
     if start_seeds & forbidden_seeds:
         raise ValueError(f"start_seeds and forbidden_seeds shares some seeds: {start_seeds & forbidden_seeds}.")
@@ -248,7 +254,7 @@ def search_seeds_activate_targets_iterative(graph_data:str, start_seeds:iter=(),
             # now, remove terminal from the dag
             remove_terminal(terminal, scc_dag, frozenset(rev_scc_dag.get(terminal, ())))
     print('OUTPUT HYPOTHESIS:', all_hypothesis, targets, 'compute_optimal_solutions=', compute_optimal_solutions)
-    return _solutions_from_hypothesis(all_hypothesis, targets, compute_optimal_solutions, filter_included_solutions)
+    return enum_mode.frozenset_operation(_solutions_from_hypothesis(all_hypothesis, targets, compute_optimal_solutions, filter_included_solutions))
 
 def _solutions_from_hypothesis(all_hypothesis:list, targets:set, compute_optimal_solutions:bool=False, filter_included_solutions:bool=True) -> frozenset:
     """Compute the solutions from hypothesis and targets.

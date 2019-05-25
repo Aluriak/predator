@@ -22,10 +22,10 @@ def test_lattice_reaction():
     assert expected_seeds_sets == set(search_seeds(graph, targets='d', forbidden_seeds='d'))
     expected_seeds_sets = {frozenset('ab'), frozenset('bc')}
     assert expected_seeds_sets == set(search_seeds(graph, targets='e', forbidden_seeds='e'))
-    expected_seeds_sets = {frozenset('abc')}
-    assert expected_seeds_sets == set(search_seeds(graph, targets='def', forbidden_seeds='def'))
-    expected_seeds_sets = {frozenset('ab')}
-    assert expected_seeds_sets == set(search_seeds(graph, targets='e', forbidden_seeds='ce'))
+    assert {frozenset('abc')} == set(search_seeds(graph, targets='e', forbidden_seeds='e', enum_mode='union'))
+    assert {frozenset('b')} == set(search_seeds(graph, targets='e', forbidden_seeds='e', enum_mode='intersection'))
+    assert {frozenset('abc')} == set(search_seeds(graph, targets='def', forbidden_seeds='def'))
+    assert {frozenset('ab')} == set(search_seeds(graph, targets='e', forbidden_seeds='ce'))
 
 
 def test_impossible_case():
@@ -46,8 +46,14 @@ def test_hierarchical_case():
     assert expected_seeds_sets == set(search_seeds(graph, targets='c', compute_optimal_solutions=True))
     expected_seeds_sets = {frozenset('ab'), frozenset('ad'), frozenset('bc'), frozenset('cde')}
     assert expected_seeds_sets == set(search_seeds(graph, targets='bc'))
+    expected_seeds_sets = {frozenset('abcde')}
+    assert expected_seeds_sets == set(search_seeds(graph, targets='bc', enum_mode='union'))
     expected_seeds_sets = {frozenset('ab'), frozenset('ad'), frozenset('bc')}
     assert expected_seeds_sets == set(search_seeds(graph, targets='bc', compute_optimal_solutions=True))
+    expected_seeds_sets = {frozenset('abcd')}
+    assert expected_seeds_sets == set(search_seeds(graph, targets='bc', compute_optimal_solutions=True, enum_mode='union'))
+    expected_seeds_sets = {frozenset()}
+    assert expected_seeds_sets == set(search_seeds(graph, targets='bc', compute_optimal_solutions=True, enum_mode='intersection'))
 
 
 def test_non_optimal_local():
@@ -59,3 +65,7 @@ def test_non_optimal_local():
     assert expected_seeds_sets == set(search_seeds(graph, forbidden_seeds='ce', targets='e'))
     expected_seeds_sets = {frozenset('abd'), frozenset('adc')}
     assert expected_seeds_sets == set(search_seeds(graph, start_seeds='a', forbidden_seeds='e', targets='e'))
+    expected_seeds_sets = {frozenset('abdc')}
+    assert expected_seeds_sets == set(search_seeds(graph, start_seeds='a', forbidden_seeds='e', targets='e', enum_mode='union'))
+    expected_seeds_sets = {frozenset('ad')}
+    assert expected_seeds_sets == set(search_seeds(graph, start_seeds='a', forbidden_seeds='e', targets='e', enum_mode='intersection'))
