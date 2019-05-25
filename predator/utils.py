@@ -18,6 +18,7 @@ obj_property(edge,arrowhead,vee).
 
 def solve(*args, **kwargs):
     "Wrapper around clyngor.solve"
+    kwargs.setdefault('use_clingo_module', False)
     try:
         return clyngor.solve(*args, **kwargs)
     except FileNotFoundError as err:
