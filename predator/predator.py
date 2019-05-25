@@ -367,6 +367,8 @@ def search_seeds_activate_all(graph_data:str, start_seeds:iter=(), forbidden_see
     This implements the most simple solution: no targets, find the minimum sets
     of seeds that activate everything.
 
+    Use SCC optimization, starting from SCC root, going to leaves.
+
     """
     if targets:
         raise ValueError("search_seeds_activate_all() does not handle targets. Use another method that supports it, or search_seeds().")
