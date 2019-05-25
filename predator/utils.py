@@ -21,7 +21,7 @@ def solve(*args, **kwargs):
     try:
         return clyngor.solve(*args, **kwargs)
     except FileNotFoundError as err:
-        if 'clingo' in err.args[0]:
+        if 'clingo' in err.filename:
             print('ERROR binary file clingo is not accessible in the PATH.')
             exit(1)
         else:  raise err
