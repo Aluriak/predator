@@ -60,6 +60,8 @@ def cli_parser() -> argparse.ArgumentParser:
                         help="Targets are added to forbidden seeds")
     parser.add_argument('--pareto', '-p', action='store_true',
                         help="Explore the pareto front of targets/seeds ratio")
+    parser.add_argument('--pareto-full', '-pf', action='store_true',
+                        help="Explore the pareto front of targets/seeds/targets-as-seeds ratios")
 
 
 
@@ -106,7 +108,7 @@ if __name__ == '__main__':
     if args.intersection:  enum_mode = 'intersection'
     if args.targets_are_forbidden:  forbidden_seeds |= targets
     # main work
-    for idx, seeds in enumerate(predator.search_seeds(graph, seeds, forbidden_seeds, targets, enum_mode=enum_mode, explore_pareto=args.pareto), start=1):
+    for idx, seeds in enumerate(predator.search_seeds(graph, seeds, forbidden_seeds, targets, enum_mode=enum_mode, explore_pareto=args.pareto, pareto_on_target_as_seeds=args.pareto_full), start=1):
         repr_seeds = ', '.join(map(str, seeds))
         print(f"Solution {idx}:\n{repr_seeds}\n")
     print('end of solutions.')

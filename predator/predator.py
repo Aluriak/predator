@@ -50,13 +50,16 @@ assert os.path.exists(ASP_SRC_SIMPLE_SEED_SOLVING), ASP_SRC_SIMPLE_SEED_SOLVING
 
 def search_seeds(graph_data:str, start_seeds:iter=(), forbidden_seeds:iter=(),
                  targets:set=(), graph_filename:str=None, enum_mode:str=EnumMode.Enumeration,
-                 explore_pareto:bool=False, greedy:bool=False, **kwargs) -> [{set}]:
+                 explore_pareto:bool=False, pareto_on_target_as_seeds:bool=False,
+                 greedy:bool=False, **kwargs) -> [{set}]:
     "Wrapper around all seeds search methods. The used methods depends of given parameters."
     enum_mode = EnumMode(enum_mode)
     if not targets:  # no target, just activate everything
         func = search_seeds_activate_all
-    elif explore_pareto:  # explore the pareto front
+    elif explore_pareto or pareto_on_target_as_seeds:  # explore the pareto front
         func = search_pareto_front
+        if pareto_on_target_as_seeds:
+            kwargs['avoid_targets_as_seeds'] = True
     elif greedy:  # non efficient search of targets
         func = search_seeds_activate_targets_greedy  # TODO: this is not tested…
     else:  # efficient search of targets
