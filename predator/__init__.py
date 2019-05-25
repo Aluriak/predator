@@ -1,4 +1,4 @@
-__version__ = '0.0.3.dev0'
+__version__ = '0.0.3'
 
 from .graph import graph_from_file, print_info
 from .predator import search_seeds, EnumMode
