@@ -16,19 +16,19 @@ def test_basic_EnumMode_API():
 def test_simple_reaction():
     graph = quoted_data('reactant(a,r). product(p,r). reaction(r).')
     # utils.render_network(graph, 'todel.png')  # uncomment to help debugging
-    seeds_sets = [frozenset('a')]
-    assert seeds_sets == list(search_seeds(graph))
-    seeds_sets = [frozenset('a'), frozenset('p')]
-    assert seeds_sets == list(search_seeds(graph, targets='p'))
+    seeds_sets = {frozenset('a')}
+    assert seeds_sets == set(search_seeds(graph))
+    seeds_sets = {frozenset('a'), frozenset('p')}
+    assert seeds_sets == set(search_seeds(graph, targets='p'))
 
 
 def test_double_reactant_reaction():
     graph = quoted_data('reactant((a;b),r). product(p,r). reaction(r).')
     # utils.render_network(graph, 'todel.png')  # uncomment to help debugging
-    seeds_sets = [frozenset('ab')]
-    assert seeds_sets == list(search_seeds(graph))
-    seeds_sets = [frozenset('ab'), frozenset('p')]
-    assert seeds_sets == list(search_seeds(graph, targets='p'))
+    seeds_sets = {frozenset('ab')}
+    assert seeds_sets == set(search_seeds(graph))
+    seeds_sets = {frozenset('ab'), frozenset('p')}
+    assert seeds_sets == set(search_seeds(graph, targets='p'))
 
 
 def test_double_reactant_with_feedback_reaction():
