@@ -15,6 +15,7 @@ ASP_SRC_SIMPLE_SEED_SOLVING = resource_filename(__name__, 'asp/simple-seed-solvi
 ASP_SRC_GREEDY_TARGET_SEED_SOLVING = resource_filename(__name__, 'asp/greedy-target-seed-solving.lp')
 ASP_SRC_GREEDY_TARGET_SEED_SOLVING_SEED_MINIMALITY = resource_filename(__name__, 'asp/greedy-target-seed-solving-seed-minimality-constraint.lp')
 ASP_SRC_ITERATIVE_TARGET_SEED_SOLVING__AIM = resource_filename(__name__, 'asp/iterative-target-seed-solving--aim.lp')
+ASP_SRC_PARETO_OPTIMIZATIONS = resource_filename(__name__, 'asp/pareto_utnu.lp')
 import os
 assert os.path.exists(ASP_SRC_ENUM_CC), ASP_SRC_ENUM_CC
 assert os.path.exists(ASP_SRC_SIMPLE_SEED_SOLVING), ASP_SRC_SIMPLE_SEED_SOLVING
@@ -34,14 +35,38 @@ def opt_models_from_clyngor_answers(answers:iter, *, smaller_is_best:bool=True):
 
 
 def search_seeds(graph_data:str, start_seeds:iter=(), forbidden_seeds:iter=(),
-                 targets:set=(), graph_filename:str=None, **kwargs) -> [str]:
+                 targets:set=(), graph_filename:str=None, explore_pareto:bool=False,
+                 **kwargs) -> [str]:
     "Wrapper around all seeds search methods. The used methods depends of given parameters."
     if not targets:  # no target, just activate everything
         func = search_seeds_activate_all
-    else:
+    elif explore_pareto:  # explore the pareto front
+        func = search_pareto_front
+    else:  # efficient search of targets
         func = search_seeds_activate_targets_greedy  # TODO: use the non-greedy solution
         func = search_seeds_activate_targets_iterative  # TODO: implement that
     yield from func(graph_data, frozenset(start_seeds), frozenset(forbidden_seeds), frozenset(targets), graph_filename, **kwargs)
+
+
+def search_pareto_front(graph_data:str, start_seeds:iter=(), forbidden_seeds:set=(), targets:set=(), graph_filename:str=None) -> [set]:
+    """Yield the set of seeds for each found solution on the pareto front."""
+    # treat parameters
+    if start_seeds & forbidden_seeds:
+        raise ValueError(f"start_seeds and forbidden_seeds shares some seeds: {start_seeds & forbidden_seeds}.")
+    targets = frozenset(map(quoted, targets))
+    start_seeds = frozenset(map(quoted, start_seeds))
+    forbidden_seeds = frozenset(map(quoted, forbidden_seeds))
+    # data representation
+    start_seeds_repr = ' '.join(f'seed({quoted(s)}).' for s in start_seeds)
+    targets_repr = ' '.join(f'target({quoted(t)}).' for t in targets)
+    forb_repr = ' '.join(f'forbidden({quoted(s)}).' for s in forbidden_seeds)
+    data_repr = graph_data + start_seeds_repr + targets_repr + forb_repr
+
+    files = ASP_SRC_PARETO_OPTIMIZATIONS, ASP_SRC_GREEDY_TARGET_SEED_SOLVING
+    models = solve(files, inline=data_repr, clingo_bin_path='asprin').with_optimality.discard_quotes.by_predicate
+    for model, opts, isoptimum in models:
+        if isoptimum:
+            yield frozenset(args[0] for args in model.get('seed', ()))
 
 
 def search_seeds_activate_targets_iterative(graph_data:str, start_seeds:iter=(), forbidden_seeds:set=(), targets:set=(),

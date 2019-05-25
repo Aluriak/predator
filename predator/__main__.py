@@ -54,6 +54,10 @@ def cli_parser() -> argparse.ArgumentParser:
                         help="Use semantic injection found in sbml data")
     parser.add_argument('--targets-are-forbidden', '-taf', action='store_true',
                         help="Targets are added to forbidden seeds")
+    parser.add_argument('--pareto', '-p', action='store_true',
+                        help="Explore the pareto front of targets/seeds ratio")
+
+
 
     return parser
 
@@ -97,7 +101,7 @@ if __name__ == '__main__':
     # main work
     union_over_seeds, intersection_over_seeds = set(), set()
     first_loop = True  # only true during the first iteration of the next loop
-    for idx, seeds in enumerate(predator.search_seeds(graph, seeds, forbidden_seeds, targets), start=1):
+    for idx, seeds in enumerate(predator.search_seeds(graph, seeds, forbidden_seeds, targets, explore_pareto=args.pareto), start=1):
         if args.union:  union_over_seeds |= seeds
         if args.intersection:
             if first_loop:  intersection_over_seeds = seeds
