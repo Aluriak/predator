@@ -18,6 +18,8 @@ def test_simple_reaction():
     # utils.render_network(graph, 'todel.png')  # uncomment to help debugging
     seeds_sets = [frozenset('a')]
     assert seeds_sets == list(search_seeds(graph))
+    seeds_sets = [frozenset('a'), frozenset('p')]
+    assert seeds_sets == list(search_seeds(graph, targets='p'))
 
 
 def test_double_reactant_reaction():
@@ -25,6 +27,8 @@ def test_double_reactant_reaction():
     # utils.render_network(graph, 'todel.png')  # uncomment to help debugging
     seeds_sets = [frozenset('ab')]
     assert seeds_sets == list(search_seeds(graph))
+    seeds_sets = [frozenset('ab'), frozenset('p')]
+    assert seeds_sets == list(search_seeds(graph, targets='p'))
 
 
 def test_double_reactant_with_feedback_reaction():
