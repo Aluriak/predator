@@ -174,8 +174,9 @@ def search_seeds_activate_targets_iterative(graph_data:str, start_seeds:iter=(),
         scc_targets = targets & sccs[scc_name]
         seeds, scc_reactions, fullfilled = hypothesis
         for scc, reactions in scc_reactions.items():
-            for reaction, external_reactants in reactions.items():
-                scc_targets |= external_reactants
+            if scc == scc_name:
+                for reaction, external_reactants in reactions.items():
+                    scc_targets |= external_reactants
         print('\tFIND AIM:', scc_name, hypothesis, '->', scc_targets)
         return scc_targets
 
