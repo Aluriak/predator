@@ -210,19 +210,23 @@ def search_seeds_activate_targets_iterative(graph_data:str, start_seeds:iter=(),
     # hypothesis = defaultdict(list)  # {scc: hypothesis} with hypothesis == iterable of (seeds, reactions)
     # associate an empty hypothesis for each SCC having a target.
     targets = frozenset(map(quoted, targets))
+    useful_terminals = set()  # set of terminals SCC names that can be useful for the problem
     for scc, nodes in sccs.items():
         print('SEARCHING TARGETS:', nodes, targets, nodes & targets)
         if nodes & targets:  # the terminal SCC has an aim
-            all_hypothesis.append(get_null_hypothesis(scc))
+            useful_terminals.add(scc)
+            # all_hypothesis.append(get_null_hypothesis(scc))
     # iteratively find hypothesis
     while len(scc_dag) > 1:  # last valid key is None
         for terminal in frozenset(get_terminal_nodes(scc_dag)):
             print('TERMINAL:', terminal)
             if terminal is None: continue
             self_hypothesis = tuple(get_hypothesis_of(terminal))
-            print('ALL HYPS:', all_hypothesis, '\t(does not contains TERM HYP)')
-            print('TERM HYP:', self_hypothesis)
-            print('    DAG :', scc_dag)
+            if not self_hypothesis and terminal in useful_terminals:
+                self_hypothesis = (get_null_hypothesis(terminal),)
+            print('ALL HYPS:', 'len:', len(all_hypothesis), all_hypothesis, '\t(does not contains TERM HYP)')
+            print('TERM HYP:', 'len:', len(self_hypothesis), self_hypothesis)
+            print('    DAG :', 'len:', len(scc_dag), scc_dag)
             for current_hypothesis in self_hypothesis:
                 aim = find_aim(terminal, current_hypothesis)
                 if not aim:  # the hypothesis has nothing to produce
