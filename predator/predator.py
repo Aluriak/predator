@@ -248,7 +248,7 @@ def search_seeds_activate_targets_iterative(graph_data:str, start_seeds:iter=(),
                 print('\tCURRENT HYP:', current_hypothesis)
                 print('\tCURR.  AIM :', aim)
                 # print('\t  SCC DATA:', scc_data)
-                for new_seeds, new_targets, new_fullfill in _compute_hypothesis_from_scc(terminal, scc_data, sccs, rev_scc_dag):
+                for new_seeds, new_targets, new_fullfill in _compute_hypothesis_from_scc(terminal, scc_data, sccs, rev_scc_dag, enum_mode):
                     new_seeds |= current_hypothesis[0]
                     new_targets = {**current_hypothesis[1], **new_targets}
                     del new_targets[terminal]  # remove self from the hypothesis
@@ -259,9 +259,9 @@ def search_seeds_activate_targets_iterative(graph_data:str, start_seeds:iter=(),
             # now, remove terminal from the dag
             remove_terminal(terminal, scc_dag, frozenset(rev_scc_dag.get(terminal, ())))
     print('OUTPUT HYPOTHESIS:', all_hypothesis, targets, 'compute_optimal_solutions=', compute_optimal_solutions)
-    return enum_mode.frozenset_operation(_solutions_from_hypothesis(all_hypothesis, targets, compute_optimal_solutions, filter_included_solutions))
+    return frozenset(_solutions_from_hypothesis(all_hypothesis, targets, compute_optimal_solutions, filter_included_solutions, enum_mode))
 
-def _solutions_from_hypothesis(all_hypothesis:list, targets:set, compute_optimal_solutions:bool=False, filter_included_solutions:bool=True) -> frozenset:
+def _solutions_from_hypothesis(all_hypothesis:list, targets:set, compute_optimal_solutions:bool, filter_included_solutions:bool, enum_mode:EnumMode) -> frozenset:
     """Compute the solutions from hypothesis and targets.
     If compute_optimal_solutions is given, will filter out all non-optimal solutions.
 
@@ -282,8 +282,9 @@ def _solutions_from_hypothesis(all_hypothesis:list, targets:set, compute_optimal
         assert len(scc_reactions) == 1, scc_reactions
         assert None in scc_reactions, scc_reactions
         assert len(scc_reactions[None]) == 0, scc_reactions[None]
-        assert seeds, seeds
-        assert fullfilled, fullfilled
+        if enum_mode is not EnumMode.Intersection:
+            assert seeds, seeds
+        assert fullfilled, (seeds, fullfilled)
         seeds = frozenset(map(unquoted, seeds))
         unfullfilled_targets -= fullfilled
         # print(f'SOLUTION: seeds {set(seeds)} are fullfilling {set(map(unquoted, fullfilled))}')
@@ -316,11 +317,15 @@ def _solutions_from_hypothesis(all_hypothesis:list, targets:set, compute_optimal
     return frozenset(solutions)
 
 
-def _compute_hypothesis_from_scc(scc_name:str, scc_encoding:set, sccs:dict, rev_scc_dag:dict) -> [(set, dict, set)]:
+def _compute_hypothesis_from_scc(scc_name:str, scc_encoding:set, sccs:dict, rev_scc_dag:dict, enum_mode:EnumMode) -> [(set, dict, set)]:
     """Yield hypothesis computed from given scc_name to consider for next SCCs"""
     # the following call will provide us a model for each hypothesis.
-    models = solve(ASP_SRC_ITERATIVE_TARGET_SEED_SOLVING__AIM, inline=scc_encoding, options='--opt-mode=optN')
-    models = opt_models_from_clyngor_answers(models.by_predicate)
+    models = solve(ASP_SRC_ITERATIVE_TARGET_SEED_SOLVING__AIM, inline=scc_encoding, options='--opt-mode=optN ' + enum_mode.clingo_option, delete_tempfile=False)
+    if enum_mode is EnumMode.Enumeration:
+        models = opt_models_from_clyngor_answers(models.by_predicate)
+    else:
+        for model in models.by_predicate:
+            models = [model]  # just keep the last one
     print('\tCOMPUTE ALL HYPOTHESIS:', scc_name)
     print('                NB MODEL:', len(models))
     print('             SCC PARENTS:', rev_scc_dag[scc_name])
@@ -353,8 +358,8 @@ def _compute_hypothesis_from_scc(scc_name:str, scc_encoding:set, sccs:dict, rev_
 
 
 def search_seeds_activate_targets_greedy(graph_data:str, start_seeds:iter=(), forbidden_seeds:set=(), targets:set=(),
-                                         graph_filename:str=None, enum_mode:EnumMode=EnumMode.Enumeration, compute_optimal_solutions:bool=False,
-                                         filter_included_solutions:bool=True) -> [{set}]:
+                                         graph_filename:str=None, enum_mode:EnumMode=EnumMode.Enumeration,
+                                         compute_optimal_solutions:bool=False, filter_included_solutions:bool=True) -> [{set}]:
     """Yield the set of seeds for each found solution.
 
     This implements the activation of targets: find the minimum sets
