@@ -36,6 +36,14 @@ class EnumMode(Enum):
         }[self.value]
 
     @property
+    def clingo_option_for_iterative_search(self) -> str:
+        return {
+            'enumeration': '',
+            'union': '--enum-mode brave',
+            'intersection': '',
+        }[self.value]
+
+    @property
     def frozenset_operation(self) -> str:
         return {
             'enumeration': lambda sets: sets,
@@ -259,7 +267,8 @@ def search_seeds_activate_targets_iterative(graph_data:str, start_seeds:iter=(),
             # now, remove terminal from the dag
             remove_terminal(terminal, scc_dag, frozenset(rev_scc_dag.get(terminal, ())))
     print('OUTPUT HYPOTHESIS:', all_hypothesis, targets, 'compute_optimal_solutions=', compute_optimal_solutions)
-    return frozenset(_solutions_from_hypothesis(all_hypothesis, targets, compute_optimal_solutions, filter_included_solutions, enum_mode))
+    solutions = _solutions_from_hypothesis(all_hypothesis, targets, compute_optimal_solutions, filter_included_solutions, enum_mode)
+    return enum_mode.frozenset_operation(solutions)
 
 def _solutions_from_hypothesis(all_hypothesis:list, targets:set, compute_optimal_solutions:bool, filter_included_solutions:bool, enum_mode:EnumMode) -> frozenset:
     """Compute the solutions from hypothesis and targets.
@@ -320,12 +329,13 @@ def _solutions_from_hypothesis(all_hypothesis:list, targets:set, compute_optimal
 def _compute_hypothesis_from_scc(scc_name:str, scc_encoding:set, sccs:dict, rev_scc_dag:dict, enum_mode:EnumMode) -> [(set, dict, set)]:
     """Yield hypothesis computed from given scc_name to consider for next SCCs"""
     # the following call will provide us a model for each hypothesis.
-    models = solve(ASP_SRC_ITERATIVE_TARGET_SEED_SOLVING__AIM, inline=scc_encoding, options='--opt-mode=optN ' + enum_mode.clingo_option, delete_tempfile=False)
-    if enum_mode is EnumMode.Enumeration:
-        models = opt_models_from_clyngor_answers(models.by_predicate)
-    else:
-        for model in models.by_predicate:
-            models = [model]  # just keep the last one
+    models = solve(ASP_SRC_ITERATIVE_TARGET_SEED_SOLVING__AIM, inline=scc_encoding, options='--opt-mode=optN ' + enum_mode.clingo_option_for_iterative_search, delete_tempfile=False).by_predicate
+    if enum_mode is EnumMode.Union:
+        model = None
+        for model in models:  pass
+        models = [model] if model else []
+    else:  # for intersection and enumeration, just get optimums
+        models = opt_models_from_clyngor_answers(models)
     print('\tCOMPUTE ALL HYPOTHESIS:', scc_name)
     print('                NB MODEL:', len(models))
     print('             SCC PARENTS:', rev_scc_dag[scc_name])

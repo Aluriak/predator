@@ -50,6 +50,16 @@ def test_loop():
     assert {frozenset()} == set(search_seeds(graph, enum_mode='intersection'))
 
 
+def test_and_or():
+    graph = quoted_data('reactant("b","r2"). reactant("c","r3"). reactant("a","r1"). reactant("b","r1"). reactant("c","r1"). product("c","r2"). product("b","r3"). product("d","r1"). reaction("r2"). reaction("r3"). reaction("r1").')
+    # utils.render_network(graph, 'todel.png')  # uncomment to help debugging
+    assert {frozenset('ab'), frozenset('ac')} == set(search_seeds(graph))
+    assert {frozenset('ab'), frozenset('ac'), frozenset('d')} == set(search_seeds(graph, targets='d'))
+    assert {frozenset('ab'), frozenset('ac')} == set(search_seeds(graph, targets='d', forbidden_seeds='d'))
+    assert {frozenset('abc')} == set(search_seeds(graph, enum_mode='union'))
+    assert {frozenset('a')} == set(search_seeds(graph, enum_mode='intersection'))
+
+
 def test_with_seeds_and_forbidden():
     graph = quoted_data('reactant((a;b),1). product((d;e),1). reaction(1).  reactant((b;c),2). product((e;f),2). reaction(2).')
     # utils.render_network(graph, 'todel.png')  # uncomment to help debugging
