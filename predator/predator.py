@@ -111,7 +111,7 @@ def search_pareto_front(graph_data:str, start_seeds:iter=(), forbidden_seeds:set
 
 def search_seeds_activate_targets_iterative(graph_data:str, start_seeds:iter=(), forbidden_seeds:set=(), targets:set=(),
                                             graph_filename:str=None, enum_mode:EnumMode=EnumMode.Enumeration,
-                                            compute_optimal_solutions:bool=False, filter_included_solutions:bool=True) -> [set]:
+                                            compute_optimal_solutions:bool=False, filter_included_solutions:bool=True, verbose:bool=False) -> [set]:
     """Yield the set of seeds for each found solution.
 
     compute_optimal_solutions -- if True, will post-process the solutions to get
@@ -179,6 +179,7 @@ def search_seeds_activate_targets_iterative(graph_data:str, start_seeds:iter=(),
     3. when an SCC is composed of one node, with one ingoing and one outgoing reaction, ASP is unneeded.
 
     """
+    if not verbose:  print = lambda *_, **__: None
     print(start_seeds, forbidden_seeds, start_seeds & forbidden_seeds)
     if start_seeds & forbidden_seeds:
         raise ValueError(f"start_seeds and forbidden_seeds shares some seeds: {start_seeds & forbidden_seeds}.")
@@ -258,7 +259,7 @@ def search_seeds_activate_targets_iterative(graph_data:str, start_seeds:iter=(),
                 print('\tCURRENT HYP:', current_hypothesis)
                 print('\tCURR.  AIM :', aim)
                 # print('\t  SCC DATA:', scc_data)
-                for new_seeds, new_targets, new_fullfill in _compute_hypothesis_from_scc(terminal, scc_data, sccs, rev_scc_dag, enum_mode):
+                for new_seeds, new_targets, new_fullfill in _compute_hypothesis_from_scc(terminal, scc_data, sccs, rev_scc_dag, enum_mode, verbose):
                     new_seeds |= current_hypothesis[0]
                     new_targets = {**current_hypothesis[1], **new_targets}
                     del new_targets[terminal]  # remove self from the hypothesis
@@ -269,14 +270,15 @@ def search_seeds_activate_targets_iterative(graph_data:str, start_seeds:iter=(),
             # now, remove terminal from the dag
             remove_terminal(terminal, scc_dag, frozenset(rev_scc_dag.get(terminal, ())))
     print('OUTPUT HYPOTHESIS:', all_hypothesis, targets, 'compute_optimal_solutions=', compute_optimal_solutions)
-    solutions = _solutions_from_hypothesis(all_hypothesis, targets, compute_optimal_solutions, filter_included_solutions, enum_mode)
+    solutions = _solutions_from_hypothesis(all_hypothesis, targets, compute_optimal_solutions, filter_included_solutions, enum_mode, verbose)
     return enum_mode.frozenset_operation(solutions)
 
-def _solutions_from_hypothesis(all_hypothesis:list, targets:set, compute_optimal_solutions:bool, filter_included_solutions:bool, enum_mode:EnumMode) -> frozenset:
+def _solutions_from_hypothesis(all_hypothesis:list, targets:set, compute_optimal_solutions:bool, filter_included_solutions:bool, enum_mode:EnumMode, verbose:bool) -> frozenset:
     """Compute the solutions from hypothesis and targets.
     If compute_optimal_solutions is given, will filter out all non-optimal solutions.
 
     """
+    if not verbose:  print = lambda *_, **__: None
     if not all_hypothesis:  # no hypothesis
         return frozenset()
     # verify that all targets are reachable
@@ -328,9 +330,10 @@ def _solutions_from_hypothesis(all_hypothesis:list, targets:set, compute_optimal
     return frozenset(solutions)
 
 
-def _compute_hypothesis_from_scc(scc_name:str, scc_encoding:set, sccs:dict, rev_scc_dag:dict, enum_mode:EnumMode) -> [(set, dict, set)]:
+def _compute_hypothesis_from_scc(scc_name:str, scc_encoding:set, sccs:dict, rev_scc_dag:dict, enum_mode:EnumMode, verbose:bool) -> [(set, dict, set)]:
     """Yield hypothesis computed from given scc_name to consider for next SCCs"""
     # the following call will provide us a model for each hypothesis.
+    if not verbose:  print = lambda *_, **__: None
     models = solve(ASP_SRC_ITERATIVE_TARGET_SEED_SOLVING__AIM, inline=scc_encoding, options='--opt-mode=optN ' + enum_mode.clingo_option_for_iterative_search, delete_tempfile=False).by_predicate
     if enum_mode is EnumMode.Union:  # optimized case
         model = None
