@@ -42,6 +42,15 @@ def test_double_reactant_with_feedback_reaction():
     assert expected_seeds_sets == set(search_seeds(graph, enum_mode='intersection'))
 
 
+def test_local_minimization():
+    "Is it sure that minimizing the amount of seeds/ingoings is the right way ?"
+    graph = quoted_data('reactant(a,1). product((b;c),1). reaction(1).  reactant((b;c),2). product(a,2). reaction(2).  reactant(d,3). product(b,3). reaction(3).')
+    utils.render_network(graph, 'todel.png')  # uncomment to help debugging
+    expected_seeds_sets = {frozenset('a')}
+    assert expected_seeds_sets == set(search_seeds(graph, targets='c', forbidden_seeds='c'))
+    assert expected_seeds_sets == set(search_seeds(graph, targets='c', forbidden_seeds='c', compute_optimal_solutions=True))
+
+
 def test_loop():
     graph = quoted_data('reactant(a,1). product(b,1). reaction(1).  reactant(b,2). product(a,2). reaction(2).')
     # utils.render_network(graph, 'todel.png')  # uncomment to help debugging
