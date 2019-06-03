@@ -218,20 +218,16 @@ def search_seeds_activate_targets_iterative(graph_data:str, start_seeds:iter=(),
     # hypothesis = defaultdict(list)  # {scc: hypothesis} with hypothesis == iterable of (seeds, reactions)
     # associate an empty hypothesis for each SCC having a target.
     targets = frozenset(map(quoted, targets))
-    useful_terminals = set()  # set of terminals SCC names that can be useful for the problem
     for scc, nodes in sccs.items():
         print('SEARCHING TARGETS:', nodes, targets, nodes & targets)
         if nodes & targets:  # the terminal SCC has an aim
-            useful_terminals.add(scc)
-            # all_hypothesis.append(get_null_hypothesis(scc))
+            all_hypothesis.append(get_null_hypothesis(scc))
     # iteratively find hypothesis
     while len(scc_dag) > 1:  # last valid key is None
         for terminal in frozenset(get_terminal_nodes(scc_dag)):
             print('TERMINAL:', terminal)
             if terminal is None: continue
             self_hypothesis = tuple(get_hypothesis_of(terminal))
-            if not self_hypothesis and terminal in useful_terminals:
-                self_hypothesis = (get_null_hypothesis(terminal),)
             print('ALL HYPS:', 'len:', len(all_hypothesis), all_hypothesis, '\t(does not contains TERM HYP)')
             print('TERM HYP:', 'len:', len(self_hypothesis), self_hypothesis)
             print('    DAG :', 'len:', len(scc_dag), scc_dag)
@@ -330,7 +326,7 @@ def _compute_hypothesis_from_scc(scc_name:str, scc_encoding:set, sccs:dict, rev_
     """Yield hypothesis computed from given scc_name to consider for next SCCs"""
     # the following call will provide us a model for each hypothesis.
     models = solve(ASP_SRC_ITERATIVE_TARGET_SEED_SOLVING__AIM, inline=scc_encoding, options='--opt-mode=optN ' + enum_mode.clingo_option_for_iterative_search, delete_tempfile=False).by_predicate
-    if enum_mode is EnumMode.Union:
+    if enum_mode is EnumMode.Union:  # optimized case
         model = None
         for model in models:  pass
         models = [model] if model else []
