@@ -383,8 +383,13 @@ def search_seeds_activate_targets_greedy(graph_data:str, start_seeds:iter=(), fo
     forb_repr = ' '.join(f'forbidden({quoted(s)}).' for s in forbidden_seeds)
     data_repr = graph_data + start_seeds_repr + forb_repr + targets_repr
     models = solve((ASP_SRC_GREEDY_TARGET_SEED_SOLVING, ASP_SRC_GREEDY_TARGET_SEED_SOLVING_SEED_MINIMALITY),
-                   inline=data_repr, options='--opt-mode=optN ' + enum_mode.clingo_option).discard_quotes
-    models = opt_models_from_clyngor_answers(models.by_predicate)
+                   inline=data_repr, options='--opt-mode=optN ' + enum_mode.clingo_option).discard_quotes.by_predicate
+    if enum_mode is EnumMode.Enumeration:
+        models = opt_models_from_clyngor_answers(models)
+    else:
+        for model in models:
+            _models = [model]
+        models = _models
     for model in models:
         seeds = frozenset(args[0] for args in model['seed'] if len(args) == 1)
         yield seeds

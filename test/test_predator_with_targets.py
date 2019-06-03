@@ -75,7 +75,10 @@ def test_non_optimal_local():
     expected_seeds_sets = {frozenset('da')}
     assert expected_seeds_sets == set(search_seeds(graph, start_seeds='a', forbidden_seeds='e', targets='e', enum_mode='intersection'))
     expected_seeds_sets = {frozenset('d')}
-    assert expected_seeds_sets == set(search_seeds(graph, forbidden_seeds='e', targets='e', enum_mode='intersection'))
+    assert expected_seeds_sets == set(search_seeds(graph, forbidden_seeds='e', targets='e', enum_mode='intersection', compute_optimal_solutions=False))
+    expected_seeds_sets = {frozenset('dc')}
+    assert expected_seeds_sets == set(search_seeds(graph, forbidden_seeds='e', targets='e', enum_mode='intersection', compute_optimal_solutions=True))
+    assert expected_seeds_sets == set(search_seeds(graph, forbidden_seeds='e', targets='e', enum_mode='intersection', compute_optimal_solutions=True, greedy=True))
 
 
 def test_combinations_of_deps():
