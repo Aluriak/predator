@@ -172,6 +172,12 @@ def search_seeds_activate_targets_iterative(graph_data:str, start_seeds:iter=(),
     4. However, another SCC cannot be modified: an SCC removes itself from the Hypothesis, and add its parents.
     5. All Hypothesis objects are stored globally, and an SCC needs first to extract those that concern itself.
 
+    Optimizations to think about:
+
+    1. do not add an hypothesis to H when a better one is already in H
+    2. EnumMode.Intersection is currently naïve. Maybe it could be treated specifically like Union.
+    3. when an SCC is composed of one node, with one ingoing and one outgoing reaction, ASP is unneeded.
+
     """
     print(start_seeds, forbidden_seeds, start_seeds & forbidden_seeds)
     if start_seeds & forbidden_seeds:
