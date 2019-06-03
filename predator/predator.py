@@ -179,8 +179,8 @@ def search_seeds_activate_targets_iterative(graph_data:str, start_seeds:iter=(),
     3. when an SCC is composed of one node, with one ingoing and one outgoing reaction, ASP is unneeded.
 
     """
-    if not verbose:  print = lambda *_, **__: None
-    print(start_seeds, forbidden_seeds, start_seeds & forbidden_seeds)
+    _print = print if verbose else lambda *_, **__: None
+    _print(start_seeds, forbidden_seeds, start_seeds & forbidden_seeds)
     if start_seeds & forbidden_seeds:
         raise ValueError(f"start_seeds and forbidden_seeds shares some seeds: {start_seeds & forbidden_seeds}.")
 
@@ -192,7 +192,7 @@ def search_seeds_activate_targets_iterative(graph_data:str, start_seeds:iter=(),
             if scc == scc_name:
                 for reaction, external_reactants in reactions.items():
                     scc_targets |= external_reactants
-        print('\tFIND AIM:', scc_name, hypothesis, '->', scc_targets)
+        _print('\tFIND AIM:', scc_name, hypothesis, '->', scc_targets)
         return scc_targets
 
     all_hypothesis = []  # list of hypothesis: (seeds, {scc: {reaction name: reactants in scc}}, fullfilled targets)
@@ -215,29 +215,29 @@ def search_seeds_activate_targets_iterative(graph_data:str, start_seeds:iter=(),
         if scc_name:  hyp[1].setdefault(scc_name, dict())
         return hyp
 
-    sccs, scc_dag = compute_sccs(graph_data, graph_filename=graph_filename)
+    sccs, scc_dag = compute_sccs(graph_data, graph_filename=graph_filename, verbose=verbose)
     terminals = frozenset(get_terminal_nodes(scc_dag))
     rev_scc_dag = dict(inverted_dag(scc_dag))
-    print('  SCC DAG:', scc_dag)
-    # print('TERMINALS:', terminals)
-    # print('         :', frozenset(rev_scc_dag[None]))
+    _print('  SCC DAG:', scc_dag)
+    # _print('TERMINALS:', terminals)
+    # _print('         :', frozenset(rev_scc_dag[None]))
     assert terminals == frozenset(rev_scc_dag[None])
     # hypothesis = defaultdict(list)  # {scc: hypothesis} with hypothesis == iterable of (seeds, reactions)
     # associate an empty hypothesis for each SCC having a target.
     targets = frozenset(map(quoted, targets))
     for scc, nodes in sccs.items():
-        print('SEARCHING TARGETS:', nodes, targets, nodes & targets)
+        _print('SEARCHING TARGETS:', nodes, targets, nodes & targets)
         if nodes & targets:  # the terminal SCC has an aim
             all_hypothesis.append(get_null_hypothesis(scc))
     # iteratively find hypothesis
     while len(scc_dag) > 1:  # last valid key is None
         for terminal in frozenset(get_terminal_nodes(scc_dag)):
-            print('TERMINAL:', terminal)
+            _print('TERMINAL:', terminal)
             if terminal is None: continue
             self_hypothesis = tuple(get_hypothesis_of(terminal))
-            print('ALL HYPS:', 'len:', len(all_hypothesis), all_hypothesis, '\t(does not contains TERM HYP)')
-            print('TERM HYP:', 'len:', len(self_hypothesis), self_hypothesis)
-            print('    DAG :', 'len:', len(scc_dag), scc_dag)
+            _print('ALL HYPS:', 'len:', len(all_hypothesis), all_hypothesis, '\t(does not contains TERM HYP)')
+            _print('TERM HYP:', 'len:', len(self_hypothesis), self_hypothesis)
+            _print('    DAG :', 'len:', len(scc_dag), scc_dag)
             for current_hypothesis in self_hypothesis:
                 aim = find_aim(terminal, current_hypothesis)
                 if not aim:  # the hypothesis has nothing to produce
@@ -248,7 +248,7 @@ def search_seeds_activate_targets_iterative(graph_data:str, start_seeds:iter=(),
                         del new_scc_reactions[terminal]
                         new_hypothesis = set(seeds), new_scc_reactions, fullfilled & targets
                         all_hypothesis.append(new_hypothesis)
-                        print(f"\tTerminal {terminal} has nothing to do ; propagation of hypothesis '{new_hypothesis}' to parent {parent}.")
+                        _print(f"\tTerminal {terminal} has nothing to do ; propagation of hypothesis '{new_hypothesis}' to parent {parent}.")
                         break  # don't propagate such trivial hypothesis to all parents. Only one will have the job done
                     continue  # the current hypothesis has been treated
                 start_seeds_repr = ' '.join(f'seed({quoted(s)}).' for s in start_seeds)
@@ -256,20 +256,20 @@ def search_seeds_activate_targets_iterative(graph_data:str, start_seeds:iter=(),
                 forb_repr = ' '.join(f'forbidden({quoted(s)}).' for s in forbidden_seeds)
                 scc_repr = ' '.join(f'scc({terminal},{node}).' for node in sccs[terminal])
                 scc_data = graph_data + f'current_scc({terminal}). {scc_repr} {start_seeds_repr} {forb_repr} {targets_repr}'
-                print('\tCURRENT HYP:', current_hypothesis)
-                print('\tCURR.  AIM :', aim)
-                # print('\t  SCC DATA:', scc_data)
+                _print('\tCURRENT HYP:', current_hypothesis)
+                _print('\tCURR.  AIM :', aim)
+                # _print('\t  SCC DATA:', scc_data)
                 for new_seeds, new_targets, new_fullfill in _compute_hypothesis_from_scc(terminal, scc_data, sccs, rev_scc_dag, enum_mode, verbose):
                     new_seeds |= current_hypothesis[0]
                     new_targets = {**current_hypothesis[1], **new_targets}
                     del new_targets[terminal]  # remove self from the hypothesis
                     new_fullfill |= current_hypothesis[2]
                     new_hypothesis = new_seeds, new_targets, new_fullfill & targets
-                    print('\t\tADDED HYPOTHESIS:', new_hypothesis)
+                    _print('\t\tADDED HYPOTHESIS:', new_hypothesis)
                     all_hypothesis.append(new_hypothesis)
             # now, remove terminal from the dag
             remove_terminal(terminal, scc_dag, frozenset(rev_scc_dag.get(terminal, ())))
-    print('OUTPUT HYPOTHESIS:', all_hypothesis, targets, 'compute_optimal_solutions=', compute_optimal_solutions)
+    _print('OUTPUT HYPOTHESIS:', all_hypothesis, targets, 'compute_optimal_solutions=', compute_optimal_solutions)
     solutions = _solutions_from_hypothesis(all_hypothesis, targets, compute_optimal_solutions, filter_included_solutions, enum_mode, verbose)
     return enum_mode.frozenset_operation(solutions)
 
@@ -278,7 +278,7 @@ def _solutions_from_hypothesis(all_hypothesis:list, targets:set, compute_optimal
     If compute_optimal_solutions is given, will filter out all non-optimal solutions.
 
     """
-    if not verbose:  print = lambda *_, **__: None
+    _print = print if verbose else lambda *_, **__: None
     if not all_hypothesis:  # no hypothesis
         return frozenset()
     # verify that all targets are reachable
@@ -286,7 +286,7 @@ def _solutions_from_hypothesis(all_hypothesis:list, targets:set, compute_optimal
     for _, __, reachable in all_hypothesis:
         reachables |= targets & reachable
     if reachables != targets:  # not all are reachables
-        # print('WARNING: Not all targets are reachables:', ', '.join(targets - reachables) + '. An error will be raised.')
+        # _print('WARNING: Not all targets are reachables:', ', '.join(targets - reachables) + '. An error will be raised.')
         raise ValueError(f"Not all targets are reachables: {targets - reachables}.")
         # targets = reachables  # TODO: should raise an error, instead ?
     # quick data integrity check
@@ -300,7 +300,7 @@ def _solutions_from_hypothesis(all_hypothesis:list, targets:set, compute_optimal
         assert fullfilled, (seeds, fullfilled)
         seeds = frozenset(map(unquoted, seeds))
         unfullfilled_targets -= fullfilled
-        # print(f'SOLUTION: seeds {set(seeds)} are fullfilling {set(map(unquoted, fullfilled))}')
+        # _print(f'SOLUTION: seeds {set(seeds)} are fullfilling {set(map(unquoted, fullfilled))}')
     assert not unfullfilled_targets, unfullfilled_targets  # some targets where not reachable ; what is this magic ?
     # collect, for each target, the set of seeds reaching it
     seeds_for_target = defaultdict(list)  # target: {seeds}
@@ -308,21 +308,21 @@ def _solutions_from_hypothesis(all_hypothesis:list, targets:set, compute_optimal
         for target in fullfilled:
             seeds_for_target[target].append(seeds)
     # generate all possible solutions
-    # print('SEEDS FOR TARGETS:', seeds_for_target)
-    # print('                 :', tuple(itertools.product(*seeds_for_target.items())))
+    # _print('SEEDS FOR TARGETS:', seeds_for_target)
+    # _print('                 :', tuple(itertools.product(*seeds_for_target.items())))
     solutions = set()  # a solution is a set of seeds activating all targets
     for seeds_sets in itertools.product(*seeds_for_target.values()):
-        # print('SSEEDS SETS:', seeds_sets)
+        # _print('SSEEDS SETS:', seeds_sets)
         seeds_set = set.union(*seeds_sets)
         solutions.add(frozenset(map(lambda x: x.strip('"'), seeds_set)))
-        print(f'OPT SOLUTION: seeds {seeds_set} are fullfilling {targets}')
+        _print(f'OPT SOLUTION: seeds {seeds_set} are fullfilling {targets}')
     if filter_included_solutions:
         filtered_solutions = set()  # a solution is a set of seeds activating all targets
         for seeds_sets in solutions:
             if not any(other_set < seeds_sets for other_set in solutions):
                 filtered_solutions.add(seeds_sets)
         solutions = filtered_solutions
-        # print('FILTERED:', solutions)
+        # _print('FILTERED:', solutions)
     if compute_optimal_solutions:
         # reduce solutions using seed number
         opt_seed_number = min(map(len, solutions))
@@ -333,17 +333,18 @@ def _solutions_from_hypothesis(all_hypothesis:list, targets:set, compute_optimal
 def _compute_hypothesis_from_scc(scc_name:str, scc_encoding:set, sccs:dict, rev_scc_dag:dict, enum_mode:EnumMode, verbose:bool) -> [(set, dict, set)]:
     """Yield hypothesis computed from given scc_name to consider for next SCCs"""
     # the following call will provide us a model for each hypothesis.
-    if not verbose:  print = lambda *_, **__: None
+    _print = print if verbose else lambda *_, **__: None
     models = solve(ASP_SRC_ITERATIVE_TARGET_SEED_SOLVING__AIM, inline=scc_encoding, options='--opt-mode=optN ' + enum_mode.clingo_option_for_iterative_search, delete_tempfile=False).by_predicate
+    _print('CMD:', models.command)
     if enum_mode is EnumMode.Union:  # optimized case
         model = None
         for model in models:  pass
         models = [model] if model else []
     else:  # for intersection and enumeration, just get optimums
         models = opt_models_from_clyngor_answers(models)
-    print('\tCOMPUTE ALL HYPOTHESIS:', scc_name)
-    print('                NB MODEL:', len(models))
-    print('             SCC PARENTS:', rev_scc_dag[scc_name])
+    _print('\tCOMPUTE ALL HYPOTHESIS:', scc_name)
+    _print('                NB MODEL:', len(models))
+    _print('             SCC PARENTS:', rev_scc_dag[scc_name])
     for new_hypothesis in models:
         # new targets will need to be activated by parent SCC.
         new_targets = defaultdict(set)  # reaction: reactants
@@ -358,17 +359,17 @@ def _compute_hypothesis_from_scc(scc_name:str, scc_encoding:set, sccs:dict, rev_
         for args in new_hypothesis.get('activated_local_target', ()):
             if len(args) == 1:
                 new_fullfilled.add(args[0])
-        print('\t\tFound Hypothesis:   targets:', new_targets, '\tseeds:', new_seeds)
+        _print('\t\tFound Hypothesis:   targets:', new_targets, '\tseeds:', new_seeds)
         # create hypothesis with each parent SCC that have a reactant in it (or None for roots)
         scc_reactions = {None: dict(new_targets)}  # default case: no parent
         alien_reactants = frozenset(itertools.chain.from_iterable(new_targets.values()))
-        print('\t\tSCC_REACTION BUILDING…')
-        print('\t\t\t', rev_scc_dag[scc_name], new_targets)
-        print('\t\t\t', alien_reactants)
+        _print('\t\tSCC_REACTION BUILDING…')
+        _print('\t\t\t', rev_scc_dag[scc_name], new_targets)
+        _print('\t\t\t', alien_reactants)
         if rev_scc_dag[scc_name] and new_targets:
             scc_reactions = {parent: dict(new_targets) for parent in rev_scc_dag[scc_name]
                              if any(reactant in sccs[parent] for reactant in alien_reactants)}
-        print('\t\t\t', scc_reactions)
+        _print('\t\t\t', scc_reactions)
         yield new_seeds, scc_reactions, new_fullfilled
 
 
@@ -442,7 +443,7 @@ def search_seeds_activate_all(graph_data:str, start_seeds:iter=(), forbidden_see
     yield from seed_combinations
 
 
-def compute_sccs(graph_data:str, graph_filename:str=None) -> [{str}]:
+def compute_sccs(graph_data:str, graph_filename:str=None, verbose:bool=False) -> [{str}]:
     """Return the DAG and nodes of Strongly Connected Components found in given graph.
 
     graph_data -- ASP encoding of the metabolic network.
@@ -453,10 +454,11 @@ def compute_sccs(graph_data:str, graph_filename:str=None) -> [{str}]:
     If no graph_filename given, ASP will be used to infer them from graph_data.
 
     """
+    _print = print if verbose else lambda *_, **__: None
     if not graph_filename or True:  # the networkx method is not yet implemented
         models = solve(ASP_SRC_ENUM_CC, inline=graph_data)
         for model in models.by_predicate:
-            print('SCC MODEL:', model)
+            _print('SCC MODEL:', model)
             roots = set(args[0] for args in model.get('noinput', ()) if len(args) == 1)
             sccs = defaultdict(set)  # SCC identifier: nodes in SCC
             for scc_name, node in model.get('scc', ()):
@@ -467,10 +469,10 @@ def compute_sccs(graph_data:str, graph_filename:str=None) -> [{str}]:
             scc_dag[None] = roots
             sccs = dict(sccs)
             scc_dag = dict(scc_dag)
-        print('SCC FINAL:', sccs)
-        print()
-        print('         :', scc_dag)
-        print()
+        _print('SCC FINAL:', sccs)
+        _print()
+        _print('         :', scc_dag)
+        _print()
         return sccs, scc_dag
     else:  # use graph_filename
         raise NotImplementedError("Networkx based SCC extraction is not yet implemented")
