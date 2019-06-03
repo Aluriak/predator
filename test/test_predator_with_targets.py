@@ -32,6 +32,7 @@ def test_impossible_case():
     "the code should return nothing when no solution is found, or raise ValueError when dubious question is asked"
     graph = quoted_data('reactant((a;b),1). product((d;e),1). reaction(1).  reactant((b;c),2). product((e;f),2). reaction(2).')
     # utils.render_network(graph, 'todel.png')  # uncomment to help debugging
+    assert not tuple(search_seeds(graph, forbidden_seeds='a'))  # impossible to activate a without a
     assert not tuple(search_seeds(graph, forbidden_seeds={'a', 'd'}, targets={'d'}))
     with pytest.raises(ValueError):
         list(search_seeds(graph, start_seeds='a', forbidden_seeds='a', targets='d'))
