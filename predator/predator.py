@@ -13,11 +13,13 @@ i.e. a set of seed names that fullfill the asked conditions.
 
 """
 import math
+import clyngor
 import networkx as nx
 import itertools
 from clyngor import opt_models_from_clyngor_answers
 from . import sbml as sbml_module
 from .utils import quoted, unquoted, solve, get_terminal_nodes, inverted_dag, remove_terminal
+from functools import partial
 from collections import defaultdict
 from pkg_resources import resource_filename
 from enum import Enum
@@ -57,8 +59,12 @@ ASP_SRC_SIMPLE_SEED_SOLVING = resource_filename(__name__, 'asp/simple-seed-solvi
 ASP_SRC_GREEDY_TARGET_SEED_SOLVING = resource_filename(__name__, 'asp/greedy-target-seed-solving.lp')
 ASP_SRC_GREEDY_TARGET_SEED_SOLVING_SEED_MINIMALITY = resource_filename(__name__, 'asp/greedy-target-seed-solving-seed-minimality-constraint.lp')
 ASP_SRC_ITERATIVE_TARGET_SEED_SOLVING__AIM = resource_filename(__name__, 'asp/iterative-target-seed-solving--aim.lp')
+ASP_SRC_ITERATIVE_TARGET_SEED_SOLVING__AIM__MINIMALITY_CONSTRAINT = resource_filename(__name__, 'asp/iterative-target-seed-solving--aim--minimality-constraint.lp')
 ASP_SRC_PARETO_OPTIMIZATIONS = resource_filename(__name__, 'asp/pareto_utnu_scope_seeds.lp')
 ASP_SRC_PARETO_OPTIMIZATIONS_ALL = resource_filename(__name__, 'asp/pareto_utnu_avoid_targets_as_seeds.lp')
+ASP_SRC_ITERATIVE_PARETO_OPTIMIZATIONS = resource_filename(__name__, 'asp/pareto_iterative_scope_seeds.lp')
+ASP_SRC_ITERATIVE_PARETO_OPTIMIZATIONS_ALL = resource_filename(__name__, 'asp/pareto_iterative_avoid_targets_as_seeds.lp')
+
 import os
 assert os.path.exists(ASP_SRC_ENUM_CC), ASP_SRC_ENUM_CC
 assert os.path.exists(ASP_SRC_SIMPLE_SEED_SOLVING), ASP_SRC_SIMPLE_SEED_SOLVING
@@ -73,14 +79,40 @@ def search_seeds(graph_data:str, start_seeds:iter=(), forbidden_seeds:iter=(),
     if not targets:  # no target, just activate everything
         func = search_seeds_activate_all
     elif explore_pareto or pareto_no_target_as_seeds:  # explore the pareto front
-        func = search_pareto_front
-        kwargs['avoid_targets_as_seeds'] = pareto_no_target_as_seeds
+        func = search_pareto_front if greedy else search_iterative_pareto_front
+        kwargs.setdefault('avoid_targets_as_seeds', pareto_no_target_as_seeds)
     elif greedy:  # non efficient search of targets
         func = search_seeds_activate_targets_greedy
     else:  # efficient search of targets
         func = search_seeds_activate_targets_iterative
+    if kwargs.get('verbose'):
+        print('FUNC:', func)  # search_seeds_activate_targets_iterative
+        print('KWARGS:', kwargs)
     yield from func(graph_data, frozenset(start_seeds), frozenset(forbidden_seeds), frozenset(targets), graph_filename, enum_mode, **kwargs)
 
+
+def search_iterative_pareto_front(graph_data:str, start_seeds:iter=(), forbidden_seeds:set=(), targets:set=(),
+                                  graph_filename:str=None, enum_mode:EnumMode=EnumMode.Enumeration,
+                                  avoid_targets_as_seeds:bool=False, verbose:bool=False, **kwargs) -> [set]:
+    """Yield the set of seeds/optimal solutions.
+
+    This is a wrapper around search_seeds_activate_targets_iterative() function,
+    where a pareto exploration is used instead of the standard
+    minimize-seed-number approach for each SCC.
+
+    This function basically prepare the `compute_hypothesis_from_scc` argument
+    and yield from the decorated function call.
+
+    """
+    # the scc->hypothesis function relies on the pareto approach if asked
+    func_scc2hyp = partial(_compute_hypothesis_from_scc__pareto, avoid_targets_as_seeds=avoid_targets_as_seeds)
+    if 'avoid_targets_as_seeds' in kwargs:  # already passed to func_scc2hyp
+        del kwargs['avoid_targets_as_seeds']
+    yield from search_seeds_activate_targets_iterative(
+        graph_data, start_seeds, forbidden_seeds, targets, graph_filename,
+        enum_mode, compute_hypothesis_from_scc=func_scc2hyp, verbose=verbose,
+        **kwargs
+    )
 
 def search_pareto_front(graph_data:str, start_seeds:iter=(), forbidden_seeds:set=(), targets:set=(),
                         graph_filename:str=None, enum_mode:EnumMode=EnumMode.Enumeration,
@@ -100,20 +132,33 @@ def search_pareto_front(graph_data:str, start_seeds:iter=(), forbidden_seeds:set
     forb_repr = ' '.join(f'forbidden({quoted(s)}).' for s in forbidden_seeds)
     data_repr = graph_data + start_seeds_repr + targets_repr + forb_repr
     # solving
-    pareto_constraints = ASP_SRC_PARETO_OPTIMIZATIONS_ALL if avoid_targets_as_seeds else ASP_SRC_PARETO_OPTIMIZATIONS
-    files = pareto_constraints, ASP_SRC_GREEDY_TARGET_SEED_SOLVING
-    models = solve(files, inline=data_repr, clingo_bin_path='asprin').with_optimality.discard_quotes.by_predicate
-    if verbose:
-        print('DATA:', data_repr)
-        print('CMD:', models.command)
+    models = _pareto_with_asprin(data_repr, iterative=False, verbose=verbose)
     for model, opts, isoptimum in models:
         if isoptimum:
             yield frozenset(args[0] for args in model.get('seed', ()))
 
+def _pareto_with_asprin(data:str, avoid_targets_as_seeds:bool=False, discard_quotes:bool=True, iterative:bool=False, verbose:bool=False) -> clyngor.Answers:
+    """Return ASP answers found by calling asprin on given data for (iterative)
+    seed search.
+    """
+    if iterative:
+        pareto_constraints = ASP_SRC_ITERATIVE_PARETO_OPTIMIZATIONS_ALL if avoid_targets_as_seeds else ASP_SRC_ITERATIVE_PARETO_OPTIMIZATIONS
+        files = pareto_constraints, ASP_SRC_ITERATIVE_TARGET_SEED_SOLVING__AIM
+    else:
+        pareto_constraints = ASP_SRC_PARETO_OPTIMIZATIONS_ALL if avoid_targets_as_seeds else ASP_SRC_PARETO_OPTIMIZATIONS
+        files = pareto_constraints, ASP_SRC_GREEDY_TARGET_SEED_SOLVING
+    models = solve(files, inline=data, clingo_bin_path='asprin').with_optimality.by_predicate
+    if discard_quotes: models.discard_quotes
+    if verbose:
+        print('_pareto_with_asprin:')
+        print('\tDATA:', data)
+        print('\tCMD:', models.command)
+    return models
 
 def search_seeds_activate_targets_iterative(graph_data:str, start_seeds:iter=(), forbidden_seeds:set=(), targets:set=(),
                                             graph_filename:str=None, enum_mode:EnumMode=EnumMode.Enumeration,
-                                            compute_optimal_solutions:bool=False, filter_included_solutions:bool=True, verbose:bool=False) -> [set]:
+                                            compute_optimal_solutions:bool=False, filter_included_solutions:bool=True,
+                                            compute_hypothesis_from_scc:callable=None,verbose:bool=False) -> [set]:
     """Yield the set of seeds for each found solution.
 
     compute_optimal_solutions -- if True, will post-process the solutions to get
@@ -181,6 +226,7 @@ def search_seeds_activate_targets_iterative(graph_data:str, start_seeds:iter=(),
     3. when an SCC is composed of one node, with one ingoing and one outgoing reaction, ASP is unneeded.
 
     """
+    compute_hypothesis_from_scc = compute_hypothesis_from_scc or _compute_hypothesis_from_scc__minimization
     _print = print if verbose else lambda *_, **__: None
     _print(start_seeds, forbidden_seeds, start_seeds & forbidden_seeds)
     if start_seeds & forbidden_seeds:
@@ -261,7 +307,7 @@ def search_seeds_activate_targets_iterative(graph_data:str, start_seeds:iter=(),
                 _print('\tCURRENT HYP:', current_hypothesis)
                 _print('\tCURR.  AIM :', aim)
                 # _print('\t  SCC DATA:', scc_data)
-                for new_seeds, new_targets, new_fullfill in _compute_hypothesis_from_scc(terminal, scc_data, sccs, rev_scc_dag, enum_mode, verbose):
+                for new_seeds, new_targets, new_fullfill in compute_hypothesis_from_scc(terminal, scc_data, sccs, rev_scc_dag, enum_mode, verbose=verbose):
                     new_seeds |= current_hypothesis[0]
                     new_targets = {**current_hypothesis[1], **new_targets}
                     del new_targets[terminal]  # remove self from the hypothesis
@@ -332,18 +378,15 @@ def _solutions_from_hypothesis(all_hypothesis:list, targets:set, compute_optimal
     return frozenset(solutions)
 
 
-def _compute_hypothesis_from_scc(scc_name:str, scc_encoding:set, sccs:dict, rev_scc_dag:dict, enum_mode:EnumMode, verbose:bool) -> [(set, dict, set)]:
-    """Yield hypothesis computed from given scc_name to consider for next SCCs"""
+def __compute_hypothesis_from_scc(models:iter, scc_name:str, scc_encoding:set, sccs:dict, rev_scc_dag:dict, enum_mode:EnumMode, verbose:bool) -> [(set, dict, set)]:
+    """Yield hypothesis derived from given models, computed from either clingo or asprin.
+
+    For a pareto front exploration, see _compute_hypothesis_from_scc__pareto.
+    For a seed minimization, see _compute_hypothesis_from_scc__minimization.
+
+    """
     # the following call will provide us a model for each hypothesis.
     _print = print if verbose else lambda *_, **__: None
-    models = solve(ASP_SRC_ITERATIVE_TARGET_SEED_SOLVING__AIM, inline=scc_encoding, options='--opt-mode=optN ' + enum_mode.clingo_option_for_iterative_search, delete_tempfile=False).by_predicate
-    _print('CMD:', models.command)
-    if enum_mode is EnumMode.Union:  # optimized case
-        model = None
-        for model in models:  pass
-        models = [model] if model else []
-    else:  # for intersection and enumeration, just get optimums
-        models = opt_models_from_clyngor_answers(models)
     _print('\tCOMPUTE ALL HYPOTHESIS:', scc_name)
     _print('                NB MODEL:', len(models))
     _print('             SCC PARENTS:', rev_scc_dag[scc_name])
@@ -361,7 +404,7 @@ def _compute_hypothesis_from_scc(scc_name:str, scc_encoding:set, sccs:dict, rev_
         for args in new_hypothesis.get('activated_local_target', ()):
             if len(args) == 1:
                 new_fullfilled.add(args[0])
-        _print('\t\tFound Hypothesis:   targets:', new_targets, '\tseeds:', new_seeds)
+        _print('\t\tFound Hypothesis:   targets:', new_targets, '\tseeds:', new_seeds, '\tfullfilled:', new_fullfilled)
         # create hypothesis with each parent SCC that have a reactant in it (or None for roots)
         scc_reactions = {None: dict(new_targets)}  # default case: no parent
         alien_reactants = frozenset(itertools.chain.from_iterable(new_targets.values()))
@@ -373,6 +416,48 @@ def _compute_hypothesis_from_scc(scc_name:str, scc_encoding:set, sccs:dict, rev_
                              if any(reactant in sccs[parent] for reactant in alien_reactants)}
         _print('\t\t\t', scc_reactions)
         yield new_seeds, scc_reactions, new_fullfilled
+
+def _compute_hypothesis_from_scc__minimization(scc_name:str, scc_encoding:set, sccs:dict, rev_scc_dag:dict, enum_mode:EnumMode, verbose:bool) -> [(set, dict, set)]:
+    """Yield hypothesis computed from given scc_name to consider for next SCCs,
+    using a seed minimization approach.
+
+    For a more subtle implementation using pareto fronts,
+    see _compute_hypothesis_from_scc__pareto implementation.
+
+    """
+    # the following call will provide us a model for each hypothesis.
+    _print = print if verbose else lambda *_, **__: None
+    files = ASP_SRC_ITERATIVE_TARGET_SEED_SOLVING__AIM, ASP_SRC_ITERATIVE_TARGET_SEED_SOLVING__AIM__MINIMALITY_CONSTRAINT
+    models = solve(files, inline=scc_encoding, options='--opt-mode=optN ' + enum_mode.clingo_option_for_iterative_search, delete_tempfile=False).by_predicate
+    _print('CMD:', models.command)
+    if enum_mode is EnumMode.Union:  # optimized case
+        model = None
+        for model in models:  pass
+        models = [model] if model else []
+    else:  # for intersection and enumeration, just get optimums
+        models = opt_models_from_clyngor_answers(models)
+    yield from __compute_hypothesis_from_scc(models, scc_name, scc_encoding, sccs, rev_scc_dag, enum_mode, verbose)
+
+
+def _compute_hypothesis_from_scc__pareto(scc_name:str, scc_encoding:set, sccs:dict, rev_scc_dag:dict, enum_mode:EnumMode, verbose:bool, avoid_targets_as_seeds:bool=False) -> [(set, dict, set)]:
+    """Yield hypothesis computed from given scc_name to consider for next SCCs,
+    using a pareto front exploration to discover the different hypothesis.
+
+    Make use of _pareto_with_asprin() and __compute_hypothesis_from_scc() functions.
+
+    """
+    # the following call will provide us a model for each hypothesis.
+    _print = print if verbose else lambda *_, **__: None
+    models = _pareto_with_asprin(scc_encoding, avoid_targets_as_seeds=avoid_targets_as_seeds, discard_quotes=False, iterative=True, verbose=verbose)
+    if enum_mode is EnumMode.Union:  # optimized case
+        raise NotImplementedError("Iterative Pareto search with Union as enum_mode")
+        models = tuple(models)
+        assert len(models) == 1
+    else:  # for intersection and enumeration, just get optimums
+        pass  # optimums are already provided by pareto search
+        models = (model for model, opts, isoptimum in models if isoptimum)
+    models = tuple(models)
+    yield from __compute_hypothesis_from_scc(models, scc_name, scc_encoding, sccs, rev_scc_dag, enum_mode, verbose)
 
 
 def search_seeds_activate_targets_greedy(graph_data:str, start_seeds:iter=(), forbidden_seeds:set=(), targets:set=(),
