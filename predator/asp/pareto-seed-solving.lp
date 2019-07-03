@@ -2,6 +2,8 @@
 %  but are not necessary.
 % Nodes that are product of foreign reactions are considered activated.
 %  This encodes the fact that previous SCC are completely activated.
+% This is a standalone/proof of concept program. See pareto_utnu*
+%  for implementations to ground with standard non-optimized search.
 % INPUTS:
 %   - seed(S): node S is a seed
 %   - forbidden(S): node S cannot be a seed

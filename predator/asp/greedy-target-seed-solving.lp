@@ -2,7 +2,7 @@
 %  This is a greedy method, that is not expected to scale.
 % It should be grounded with another encoding containing optimization criteria,
 %   such as greedy-target-seed-solving-seed-minimality-constraint.lp for simple search,
-%   or pareto_utnu.lp for pareto exploration with the asprin system.
+%   or pareto_utnu*.lp for pareto exploration with the asprin system.
 % INPUTS:
 %   - seed(S): node S is a seed
 %   - forbidden(S): node S cannot be a seed
