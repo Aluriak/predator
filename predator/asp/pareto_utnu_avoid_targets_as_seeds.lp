@@ -18,5 +18,3 @@ nb(target,N) :- N={target(_)}.
 #preference(all,pareto){**scope; **seeds; **targets_as_seeds}.
 
 #optimize(all).
-#show seed/1.
-#show nb/2.
