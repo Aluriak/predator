@@ -74,8 +74,7 @@ def search_seeds(graph_data:str, start_seeds:iter=(), forbidden_seeds:iter=(),
         func = search_seeds_activate_all
     elif explore_pareto or pareto_no_target_as_seeds:  # explore the pareto front
         func = search_pareto_front
-        if pareto_no_target_as_seeds:
-            kwargs['avoid_targets_as_seeds'] = True
+        kwargs['avoid_targets_as_seeds'] = pareto_no_target_as_seeds
     elif greedy:  # non efficient search of targets
         func = search_seeds_activate_targets_greedy
     else:  # efficient search of targets
