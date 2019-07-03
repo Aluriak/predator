@@ -7,6 +7,52 @@ Seed extraction in metabolic networks.
 
 
 
+## Solving modes
+
+### Complete scope
+Activating *all* metabolites. This is the default mode, if no targets are provided.
+
+Examples:
+
+    python -m predator data.sbml
+    python -m predator data.sbml --visualize data.png --export data.lp --no-topological-injection
+
+
+### Target scope
+This is an optimized solving mode, used if targets are provided, using `--targets`/`-t` or `--targets-file`/`-tf`.
+
+The optimization rely on the use of Strongly Connected Components.
+
+Examples:
+
+    python -m predator data.sbml -t protein_1
+    python -m predator data.sbml -t protein_1 protein_2 --forbidden-seeds protein_3 --targets-are-forbidden --start-seeds protein_42
+
+
+### Pareto front exploration
+Using [asprin](https://github.com/potassco/asprin), it enumerates the pareto front solutions over the following constraints:
+
+- minimization of seeds
+- maximization of targets
+- minimization of targets that are also seeds (if flag `--targets-are-forbidden`/`-taf` is given)
+
+If `--greedy` flag is given, the whole graph will be treated in one step.
+It is not expected to scale over large graphs, but may provide slightly different answers.
+
+Example:
+
+    python -m predator data.sbml -t protein_1 --pareto
+
+
+## TODO
+- [ ] union et intersection des solutions
+    - [x] implem pour la recherche `search_seeds_activate_all`
+    - [x] implem pour la recherche `search_seeds_activate_targets_iterative`
+    - [x] implem pour la recherche `search_seeds_activate_targets_greedy`
+    - [ ] implem pour la recherche `search_pareto_front`
+    - [ ] implem pour la recherche `search_pareto_targets_iterative`
+
+
 ## release cycle
 Releases made with [zest.releaser](https://zestreleaser.readthedocs.io):
 
