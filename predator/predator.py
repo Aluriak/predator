@@ -77,7 +77,7 @@ def search_seeds(graph_data:str, start_seeds:iter=(), forbidden_seeds:iter=(),
         if pareto_on_target_as_seeds:
             kwargs['avoid_targets_as_seeds'] = True
     elif greedy:  # non efficient search of targets
-        func = search_seeds_activate_targets_greedy  # TODO: this is not tested…
+        func = search_seeds_activate_targets_greedy
     else:  # efficient search of targets
         func = search_seeds_activate_targets_iterative
     yield from func(graph_data, frozenset(start_seeds), frozenset(forbidden_seeds), frozenset(targets), graph_filename, enum_mode, **kwargs)
