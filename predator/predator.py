@@ -121,7 +121,7 @@ def search_pareto_front(graph_data:str, start_seeds:iter=(), forbidden_seeds:set
     if enum_mode in {EnumMode.Union, EnumMode.Intersection}:
         raise ValueError(f"Mode {str(enum_mode)} is not supported for this routine.")
     # treat parameters
-    if start_seeds & forbidden_seeds:
+    if start_seeds and forbidden_seeds and start_seeds & forbidden_seeds:
         raise ValueError(f"start_seeds and forbidden_seeds shares some seeds: {start_seeds & forbidden_seeds}.")
     targets = frozenset(map(quoted, targets))
     start_seeds = frozenset(map(quoted, start_seeds))
@@ -229,7 +229,7 @@ def search_seeds_activate_targets_iterative(graph_data:str, start_seeds:iter=(),
     compute_hypothesis_from_scc = compute_hypothesis_from_scc or _compute_hypothesis_from_scc__minimization
     _print = print if verbose else lambda *_, **__: None
     _print(start_seeds, forbidden_seeds, start_seeds & forbidden_seeds)
-    if start_seeds & forbidden_seeds:
+    if start_seeds and forbidden_seeds and start_seeds & forbidden_seeds:
         raise ValueError(f"start_seeds and forbidden_seeds shares some seeds: {start_seeds & forbidden_seeds}.")
 
     def find_aim(scc_name:str, hypothesis:tuple) -> [str]:
