@@ -3,7 +3,7 @@
 
 % Number of seeds
 nb(seed,N) :- N={seed(_)}.
-nb(new_target,N) :- N={new_target(_)}.
+nb(new_target,N) :- N={new_target(_,_)}.
 nb(seed_or_new_target,N+M) :- nb(seed,N) ; nb(new_target,M).
 nb(activated,N) :- N={activated(_)}.
 nb(target,N) :- N={target(_)}.
