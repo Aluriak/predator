@@ -110,7 +110,7 @@ if __name__ == '__main__':
     if args.intersection:  enum_mode = 'intersection'
     if args.targets_are_forbidden:  forbidden_seeds |= targets
     # main work
-    for idx, seeds in enumerate(predator.search_seeds(graph, seeds, forbidden_seeds, targets, enum_mode=enum_mode, explore_pareto=args.pareto, pareto_on_target_as_seeds=args.pareto_full, greedy=args.greedy), start=1):
+    for idx, seeds in enumerate(predator.search_seeds(graph, seeds, forbidden_seeds, targets, enum_mode=enum_mode, explore_pareto=args.pareto, pareto_no_target_as_seeds=args.pareto_full, greedy=args.greedy), start=1):
         repr_seeds = ', '.join(map(str, seeds))
         print(f"Solution {idx}:\n{repr_seeds}\n")
     print('end of solutions.')
