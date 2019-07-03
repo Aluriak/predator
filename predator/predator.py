@@ -85,7 +85,7 @@ def search_seeds(graph_data:str, start_seeds:iter=(), forbidden_seeds:iter=(),
 
 def search_pareto_front(graph_data:str, start_seeds:iter=(), forbidden_seeds:set=(), targets:set=(),
                         graph_filename:str=None, enum_mode:EnumMode=EnumMode.Enumeration,
-                        avoid_targets_as_seeds:bool=False) -> [set]:
+                        avoid_targets_as_seeds:bool=False, verbose:bool=False) -> [set]:
     """Yield the set of seeds for each found solution on the pareto front."""
     if enum_mode in {EnumMode.Union, EnumMode.Intersection}:
         raise ValueError(f"Mode {str(enum_mode)} is not supported for this routine.")
@@ -104,6 +104,9 @@ def search_pareto_front(graph_data:str, start_seeds:iter=(), forbidden_seeds:set
     pareto_constraints = ASP_SRC_PARETO_OPTIMIZATIONS_ALL if avoid_targets_as_seeds else ASP_SRC_PARETO_OPTIMIZATIONS
     files = pareto_constraints, ASP_SRC_GREEDY_TARGET_SEED_SOLVING
     models = solve(files, inline=data_repr, clingo_bin_path='asprin').with_optimality.discard_quotes.by_predicate
+    if verbose:
+        print('DATA:', data_repr)
+        print('CMD:', models.command)
     for model, opts, isoptimum in models:
         if isoptimum:
             yield frozenset(args[0] for args in model.get('seed', ()))
