@@ -1,5 +1,9 @@
 % Search of the minimal set of seeds or input reactions in given scc activating
 %  all targets.
+% It should be grounded with another encoding containing optimization criteria.
+%  See iterative-target-seed-solving--aim--minimality-constraint.lp
+%  for the minimality constraints to append to it for greedy search,
+%  or pareto_iterative*.lp for pareto front search.
 % INPUTS:
 %   - seed(S): node S is a seed
 %   - forbidden(S): node S cannot be a seed
@@ -41,11 +45,6 @@ new_target(T,I) :- input(I) ; reactant(T,I) ; not scc(S,T) ; current_scc(S).
 activated(M) :- input(I) ; reactant(M,I) ; not scc(S,M) ; current_scc(S).
 % Mark targets that have been activated in that SCC.
 activated_local_target(T) :- target(T) ; scc(S,T) ; current_scc(S).
-
-% Ensure its minimality
-nb_seed(N) :- N={seed(_)}.
-nb_input(N) :- N={input(_)}.
-#minimize{S+I:nb_seed(S), nb_input(I)}.
 
 % Discard any model that is not activating all targets.
 :- target(M) ; not activated(M).
