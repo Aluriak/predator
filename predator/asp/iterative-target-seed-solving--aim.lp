@@ -40,12 +40,11 @@ input_reaction(I):- reaction(I) ; current_scc(S) ; not scc(S,R) ; reactant(R,I) 
 { input(I): input_reaction(I) }.
 
 % Mark reactant of choosen input reactions as targets for future computations.
-new_target(T,I) :- input(I) ; reactant(T,I) ; not scc(S,T) ; current_scc(S).
+new_target(M,I) :- input(I) ; reactant(M,I) ; not scc(S,M) ; current_scc(S).
 % Alien reactants of choosen input reactions are considered activated.
-activated(M) :- input(I) ; reactant(M,I) ; not scc(S,M) ; current_scc(S).
+activated(M) :- new_target(M,_).
 % Mark targets that have been activated in that SCC.
 activated_local_target(T) :- target(T) ; scc(S,T) ; current_scc(S).
 
 % Discard any model that is not activating all targets.
 :- target(M) ; not activated(M).
-:- new_target(M) ; not activated(M).
