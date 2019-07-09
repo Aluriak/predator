@@ -78,11 +78,13 @@ def search_seeds(graph_data:str, start_seeds:iter=(), forbidden_seeds:iter=(),
     enum_mode = EnumMode(enum_mode)
     if not targets:  # no target, just activate everything
         func = search_seeds_activate_all
+        if 'compute_optimal_solutions' in kwargs:  del kwargs['compute_optimal_solutions']
     elif explore_pareto or pareto_no_target_as_seeds:  # explore the pareto front
         func = search_pareto_front if greedy else search_iterative_pareto_front
         kwargs.setdefault('avoid_targets_as_seeds', pareto_no_target_as_seeds)
     elif greedy:  # non efficient search of targets
         func = search_seeds_activate_targets_greedy
+        if 'compute_optimal_solutions' in kwargs:  del kwargs['compute_optimal_solutions']
     else:  # efficient search of targets
         func = search_seeds_activate_targets_iterative
     if kwargs.get('verbose'):
