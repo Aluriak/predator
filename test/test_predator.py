@@ -28,7 +28,36 @@ def test_double_reactant_reaction():
     seeds_sets = {frozenset('ab')}
     assert seeds_sets == set(search_seeds(graph))
     seeds_sets = {frozenset('ab'), frozenset('p')}
-    assert seeds_sets == set(search_seeds(graph, targets='p'))
+    assert seeds_sets == set(search_seeds(graph, targets='p', verbose=True))
+
+
+def test_non_optimal_local():
+    graph = quoted_data("""reactant(X,R):- reaction(X,R,_). product(X,R) :- reaction(_,R,X). reaction(R) :- reaction(_,R,_).
+                           reaction(z,r0,(a;b;c)).  % TODO: choose to keep z ?
+                           reaction((a;b;c),r1,(d;e;f)).
+                           reaction((d;e;f),r1r,(a;b;c)).
+                           reaction((d;e;f),r2,(g;h)).
+                           reaction(g,r3,i).
+                           reaction(i,r4,j).
+                           reaction(j,r5,g).
+                           reaction(h,r6,k).
+                           reaction(k,r7,l).
+                           reaction(l,r8,h).
+                           reaction((j;k),r9,m).""")
+    # utils.render_network(graph, 'todel.png')  # uncomment to help debugging
+    seeds_sets = {frozenset('abc'), frozenset('def')}
+    seeds_sets = {frozenset('z')}
+    assert seeds_sets == set(search_seeds(graph))
+    seeds_sets = {frozenset('abc'), frozenset('def'), frozenset('z'),
+                  frozenset('hi'), frozenset('hj'), frozenset('hg'),
+                  frozenset('ki'), frozenset('kj'), frozenset('kg'),
+                  frozenset('li'), frozenset('lj'), frozenset('lg')}
+    assert seeds_sets == set(search_seeds(graph, targets='m', forbidden_seeds='m', verbose=True))
+    seeds_sets = {frozenset('hi'), frozenset('hj'), frozenset('hg'),
+                  frozenset('ki'), frozenset('kj'), frozenset('kg'),
+                  frozenset('li'), frozenset('lj'), frozenset('lg')}
+    seeds_sets = {frozenset('z')}
+    assert seeds_sets == set(search_seeds(graph, targets='m', forbidden_seeds='m', verbose=True, compute_optimal_solutions=True))
 
 
 def test_double_reactant_with_feedback_reaction():
