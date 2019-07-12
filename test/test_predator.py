@@ -48,7 +48,7 @@ def test_loss_because_of_optimal_locality():
     # two versions of the graph: with or without z
     graph = quoted_data(DATA)
     zgraph = quoted_data(DATA + 'reaction(z,r0,(a;b;c)).')
-    utils.render_network(zgraph+'dot_property("z",style,dashed).', 'todel.png')  # uncomment to help debugging
+    # utils.render_network(zgraph+'dot_property("z",style,dashed).', 'todel.png')  # uncomment to help debugging
 
     # fully expected results
     seeds_sets = {frozenset('abc'), frozenset('def')}
@@ -100,7 +100,7 @@ def test_double_reactant_with_feedback_reaction():
 def test_local_minimization():
     "Is it sure that minimizing the amount of seeds/ingoings is the right way ?"
     graph = quoted_data('reactant(a,1). product((b;c),1). reaction(1).  reactant((b;c),2). product(a,2). reaction(2).  reactant(d,3). product(b,3). reaction(3).')
-    utils.render_network(graph, 'todel.png')  # uncomment to help debugging
+    # utils.render_network(graph, 'todel.png')  # uncomment to help debugging
     expected_seeds_sets = {frozenset('a')}
     assert expected_seeds_sets == set(search_seeds(graph, targets='c', forbidden_seeds='c'))
     assert expected_seeds_sets == set(search_seeds(graph, targets='c', forbidden_seeds='c', compute_optimal_solutions=True))
