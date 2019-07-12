@@ -31,33 +31,59 @@ def test_double_reactant_reaction():
     assert seeds_sets == set(search_seeds(graph, targets='p', verbose=True))
 
 
-def test_non_optimal_local():
-    graph = quoted_data("""reactant(X,R):- reaction(X,R,_). product(X,R) :- reaction(_,R,X). reaction(R) :- reaction(_,R,_).
-                           reaction(z,r0,(a;b;c)).  % TODO: choose to keep z ?
-                           reaction((a;b;c),r1,(d;e;f)).
-                           reaction((d;e;f),r1r,(a;b;c)).
-                           reaction((d;e;f),r2,(g;h)).
-                           reaction(g,r3,i).
-                           reaction(i,r4,j).
-                           reaction(j,r5,g).
-                           reaction(h,r6,k).
-                           reaction(k,r7,l).
-                           reaction(l,r8,h).
-                           reaction((j;k),r9,m).""")
-    # utils.render_network(graph, 'todel.png')  # uncomment to help debugging
+def test_loss_because_of_optimal_locality():
+    DATA = """
+        reactant(X,R):- reaction(X,R,_). product(X,R) :- reaction(_,R,X). reaction(R) :- reaction(_,R,_).
+        reaction((a;b;c),r1,(d;e;f)).
+        reaction((d;e;f),r1r,(a;b;c)).
+        reaction((d;e;f),r2,(g;h)).
+        reaction(g,r3,i).
+        reaction(i,r4,j).
+        reaction(j,r5,g).
+        reaction(h,r6,k).
+        reaction(k,r7,l).
+        reaction(l,r8,h).
+        reaction((j;k),r9,m).
+    """
+    # two versions of the graph: with or without z
+    graph = quoted_data(DATA)
+    zgraph = quoted_data(DATA + 'reaction(z,r0,(a;b;c)).')
+    utils.render_network(zgraph+'dot_property("z",style,dashed).', 'todel.png')  # uncomment to help debugging
+
+    # fully expected results
     seeds_sets = {frozenset('abc'), frozenset('def')}
-    seeds_sets = {frozenset('z')}
     assert seeds_sets == set(search_seeds(graph))
-    seeds_sets = {frozenset('abc'), frozenset('def'), frozenset('z'),
-                  frozenset('hi'), frozenset('hj'), frozenset('hg'),
-                  frozenset('ki'), frozenset('kj'), frozenset('kg'),
-                  frozenset('li'), frozenset('lj'), frozenset('lg')}
+    seeds_sets = {frozenset('z')}
+    assert seeds_sets == set(search_seeds(zgraph))
+
+    seeds_sets = {
+        # frozenset('z'),  # not in the zgraph
+        frozenset('abc'), frozenset('def'),
+        frozenset('hi'), frozenset('hj'), frozenset('hg'),
+        frozenset('ki'), frozenset('kj'), frozenset('kg'),
+        frozenset('li'), frozenset('lj'), frozenset('lg')
+    }
     assert seeds_sets == set(search_seeds(graph, targets='m', forbidden_seeds='m', verbose=True))
+    seeds_sets = {
+        frozenset('z'),
+        # frozenset('abc'), frozenset('def'),  # for a subtil reason, these does not belong to the solutions
+        frozenset('hi'), frozenset('hj'), frozenset('hg'),
+        frozenset('ki'), frozenset('kj'), frozenset('kg'),
+        frozenset('li'), frozenset('lj'), frozenset('lg')
+    }
+    assert seeds_sets == set(search_seeds(zgraph, targets='m', forbidden_seeds='m', verbose=True))
+    # NOTE: In that case, abc and def are no longer possible seeds.
+    # This is quite unnatural, but it's logical with current implementation:
+    #  when clingo is studying the SCC 'a', containing abcdef, and child of SCC containing z,
+    #  it faces two main choices: make abc (or def) seeds, or ask z to be activated.
+    #  3 seeds vs 1 input -> only the z solution is kept.
+
     seeds_sets = {frozenset('hi'), frozenset('hj'), frozenset('hg'),
                   frozenset('ki'), frozenset('kj'), frozenset('kg'),
                   frozenset('li'), frozenset('lj'), frozenset('lg')}
-    seeds_sets = {frozenset('z')}
     assert seeds_sets == set(search_seeds(graph, targets='m', forbidden_seeds='m', verbose=True, compute_optimal_solutions=True))
+    seeds_sets = {frozenset('z')}
+    assert seeds_sets == set(search_seeds(zgraph, targets='m', forbidden_seeds='m', verbose=True, compute_optimal_solutions=True))
 
 
 def test_double_reactant_with_feedback_reaction():
