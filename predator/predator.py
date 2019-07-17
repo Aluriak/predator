@@ -265,6 +265,10 @@ def search_seeds_activate_targets_iterative(graph_data:str, start_seeds:iter=(),
         if scc_name:  hyp[1].setdefault(scc_name, dict())
         return hyp
 
+    def get_parents_of(scc_name:str) -> iter:
+        """Yield parent SCCs. If no parent, yield None"""
+        yield from rev_scc_dag[scc_name] or [None]
+
     sccs, scc_dag = compute_sccs(graph_data, graph_filename=graph_filename, verbose=verbose)
     terminals = frozenset(get_terminal_nodes(scc_dag))
     rev_scc_dag = dict(inverted_dag(scc_dag))
@@ -292,7 +296,7 @@ def search_seeds_activate_targets_iterative(graph_data:str, start_seeds:iter=(),
                 aim = find_aim(terminal, current_hypothesis)
                 if not aim:  # the hypothesis has nothing to produce
                     seeds, scc_reactions, fullfilled = current_hypothesis
-                    for parent in rev_scc_dag[terminal] or [None]:
+                    for parent in get_parents_of(terminal):
                         new_scc_reactions = dict(scc_reactions)  # don't share among parents
                         new_scc_reactions[parent] = scc_reactions[terminal]
                         del new_scc_reactions[terminal]
