@@ -3,6 +3,7 @@
 """
 
 import os
+import time
 import argparse
 from . import graph as graph_module
 from . import predator, utils, __version__, print_info
@@ -88,11 +89,13 @@ if __name__ == '__main__':
     if args.info:
         print_info(args.infile, args.visualize, args.visualize_without_reactions)
         exit()
+    time_data_extraction = time.time()
     graph = graph_module.graph_from_file(
         args.infile,
         use_topological_injections=not args.no_topological_injection,
         use_semantic_injection=args.semantic_injection
     )
+    time_data_extraction = time.time() - time_data_extraction
     if args.export:
         sccs, _ = predator.compute_sccs(graph)
         scc_repr = '\n'.join(f'scc({scc_name},{node}).'
@@ -110,6 +113,7 @@ if __name__ == '__main__':
     if args.intersection:  enum_mode = 'intersection'
     if args.targets_are_forbidden:  forbidden_seeds |= targets
     # main work
+    time_seed_search = time.time()
     for idx, seeds in enumerate(predator.search_seeds(graph, seeds, forbidden_seeds, targets, enum_mode=enum_mode, explore_pareto=args.pareto, pareto_no_target_as_seeds=args.pareto_full, greedy=args.greedy), start=1):
         repr_seeds = ', '.join(map(str, seeds))
         print(f"Solution {idx}:\n{repr_seeds}\n")
@@ -118,3 +122,8 @@ if __name__ == '__main__':
         print('Input graph rendered in', utils.render_network(graph, args.visualize, with_reactions=True))
     if args.visualize_without_reactions:
         print('Input graph rendered in', utils.render_network(graph, args.visualize_without_reactions, with_reactions=False))
+    time_seed_search = time.time() - time_seed_search
+
+    print('TIME DATA EXTRACTION: ', round(time_data_extraction, 2), 's', sep='')
+    print('TIME   SEED SEARCH  : ', round(time_seed_search, 2), 's', sep='')
+    print('TIME      TOTAL     : ', round(time_data_extraction + time_seed_search, 2), 's', sep='')
