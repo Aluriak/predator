@@ -44,5 +44,7 @@ scc(A,C) :- scc_(A,C).
 % link between SCCs A and B.
 sccedge(A,B) :- oedge(Va, Vb) ; scc(A,Va) ; scc(B,Vb) ; A!=B.
 
-% a scc without an incoming edge is a predecessor.
+% a scc without an incoming edge is a root.
 noinput(A) :- sccedge(A,_) ; not sccedge(_,A).
+% a scc without any edge to other scc is also a root.
+noinput(A) :- scc(A,_) ; not sccedge(A,_) ; not sccedge(_,A).
