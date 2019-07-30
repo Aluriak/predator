@@ -65,6 +65,8 @@ def cli_parser() -> argparse.ArgumentParser:
                         help="Explore the pareto front of targets/seeds ratio")
     parser.add_argument('--pareto-full', '-pf', action='store_true',
                         help="Explore the pareto front of targets/seeds/targets-as-seeds ratios")
+    parser.add_argument('--scc-with-asp', action='store_true',
+                        help="Use ASP search for SCC mining")
 
 
 
@@ -96,6 +98,7 @@ if __name__ == '__main__':
         use_semantic_injection=args.semantic_injection
     )
     time_data_extraction = time.time() - time_data_extraction
+    graph_filename = None if args.scc_with_asp else args.infile
     if args.export:
         sccs, _ = predator.compute_sccs(graph)
         scc_repr = '\n'.join(f'scc({scc_name},{node}).'
@@ -114,7 +117,7 @@ if __name__ == '__main__':
     if args.targets_are_forbidden:  forbidden_seeds |= targets
     # main work
     time_seed_search = time.time()
-    for idx, seeds in enumerate(predator.search_seeds(graph, seeds, forbidden_seeds, targets, enum_mode=enum_mode, explore_pareto=args.pareto, pareto_no_target_as_seeds=args.pareto_full, greedy=args.greedy), start=1):
+    for idx, seeds in enumerate(predator.search_seeds(graph, seeds, forbidden_seeds, targets, enum_mode=enum_mode, graph_filename=graph_filename, explore_pareto=args.pareto, pareto_no_target_as_seeds=args.pareto_full, greedy=args.greedy), start=1):
         repr_seeds = ', '.join(map(str, seeds))
         print(f"Solution {idx}:\n{repr_seeds}\n")
     print('end of solutions.')

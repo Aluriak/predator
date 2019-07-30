@@ -17,7 +17,7 @@ import clyngor
 import networkx as nx
 import itertools
 from clyngor import opt_models_from_clyngor_answers
-from . import sbml as sbml_module
+from . import sbml as sbml_module, graph as graph_module
 from .utils import quoted, unquoted, solve, get_terminal_nodes, inverted_dag, remove_terminal
 from functools import partial
 from collections import defaultdict
@@ -547,28 +547,35 @@ def compute_sccs(graph_data:str, graph_filename:str=None, verbose:bool=False) ->
     If no graph_filename given, ASP will be used to infer them from graph_data.
 
     """
-    _print = print if verbose else lambda *_, **__: None
-    if not graph_filename or True:  # the networkx method is not yet implemented
+    _print = print if verbose or True else lambda *_, **__: None
+    print('COMPUTE SCCS:', graph_filename)
+    # compute the SCCs components and the SCC DAG
+    if graph_filename:  # use nx.Digraph extraction to quickly extract connected components
+        graph = graph_module.nxgraph_from_file(graph_filename, graph_data, with_reaction_nodes=False, quoted_names=True)
+        yield_sccs = nx.strongly_connected_components or nx.kosaraju_strongly_connected_components
+        sccs = {min(nodes): frozenset(nodes) for nodes in yield_sccs(graph)}
+        scc_dag = graph_module.sccs_dag_from_nxdigraph(graph, sccs)
+    else:  # no graph_filename, use pure ASP computation
         models = solve(ASP_SRC_ENUM_CC, inline=graph_data)
         for model in models.by_predicate:
             _print('SCC MODEL:', model)
-            roots = set(args[0] for args in model.get('noinput', ()) if len(args) == 1)
+            roots = {args[0] for args in model.get('noinput', ()) if len(args) == 1}
             sccs = defaultdict(set)  # SCC identifier: nodes in SCC
             for scc_name, node in model.get('scc', ()):
                 sccs[scc_name].add(node)
+            sccs = dict(sccs)
+            # Compute the DAG of SCCs
             scc_dag = defaultdict(set)  # SCC identifier: successor SCCs
             for scc_name, scc_succ in model.get('sccedge', ()):
                 scc_dag[scc_name].add(scc_succ)
             scc_dag[None] = roots
             sccs = dict(sccs)
             scc_dag = dict(scc_dag)
-        _print('SCC FINAL:', sccs)
-        _print()
-        _print('         :', scc_dag)
-        _print()
-        return sccs, scc_dag
-    else:  # use graph_filename
-        raise NotImplementedError("Networkx based SCC extraction is not yet implemented")
-        digraph = sbml_module.read_SBML_network_as_simple_graph(graph_filename)
-        sccs = {min(nodes): frozenset(nodes) for nodes in nx.strongly_connected_components(digraph)}
-        return sccs, scc_dag
+            break
+        else:
+            raise RuntimeError(r"ASP SCC enumeration yielded more than one model")
+    _print('SCC FINAL:', sccs)
+    _print()
+    _print('         :', scc_dag)
+    _print()
+    return sccs, scc_dag
