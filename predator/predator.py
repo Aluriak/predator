@@ -70,11 +70,15 @@ assert os.path.exists(ASP_SRC_ENUM_CC), ASP_SRC_ENUM_CC
 assert os.path.exists(ASP_SRC_SIMPLE_SEED_SOLVING), ASP_SRC_SIMPLE_SEED_SOLVING
 
 
-def search_seeds(graph_data:str, start_seeds:iter=(), forbidden_seeds:iter=(),
+def search_seeds(graph_data:str='', start_seeds:iter=(), forbidden_seeds:iter=(),
                  targets:set=(), graph_filename:str=None, enum_mode:str=EnumMode.Enumeration,
                  explore_pareto:bool=False, pareto_no_target_as_seeds:bool=False,
                  greedy:bool=False, **kwargs) -> [{set}]:
     "Wrapper around all seeds search methods. The used methods depends of given parameters."
+    if not graph_data and graph_filename:
+        graph_data = graph_module.graph_from_file(graph_filename)
+    if not graph_data and not graph_filename:
+        raise ValueError("No input data provided: expecting graph_data or graph_filename argument")
     enum_mode = EnumMode(enum_mode)
     if not targets:  # no target, just activate everything
         func = search_seeds_activate_all
