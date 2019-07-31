@@ -2,8 +2,7 @@
 
 """
 import pytest
-from predator import graph_from_file, search_seeds, utils
-from predator import quoted_data
+from predator import graph_from_file, search_seeds, utils, quoted_data
 
 
 def test_lattice_reaction():
