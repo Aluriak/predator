@@ -67,6 +67,8 @@ def cli_parser() -> argparse.ArgumentParser:
                         help="Explore the pareto front of targets/seeds/targets-as-seeds ratios")
     parser.add_argument('--scc-with-asp', action='store_true',
                         help="Use ASP search for SCC mining")
+    parser.add_argument('--verbose', action='store_true',
+                        help="Print everything there is to know about the search ; beware the flood")
 
 
 
@@ -90,6 +92,10 @@ if __name__ == '__main__':
     if args.info:
         print_info(args.infile, args.visualize, args.visualize_without_reactions)
         exit()
+    supp_args = {}  # more arguments for search_seeds function
+    if args.verbose:  supp_args['verbose'] = True
+
+    # Extract the ASP representation from the graph file
     time_data_extraction = time.time()
     graph = graph_module.graph_from_file(
         args.infile,
@@ -105,8 +111,8 @@ if __name__ == '__main__':
                             for node in nodes)
         with open(args.export, "w") as f:
             f.write(graph + '\n' + scc_repr)
-    # compute available targets (union of --targets and --targets-file)
-    #  (and do the same for (forbidden) seeds)
+
+    # Define targets, seeds, enumeration mode,…
     targets = get_all_ids(args.targets, args.targets_file)
     seeds = get_all_ids(args.seeds, args.seeds_file)
     forbidden_seeds = get_all_ids(args.forbidden_seeds, args.forbidden_seeds_file)
@@ -114,18 +120,39 @@ if __name__ == '__main__':
     if args.union:  enum_mode = 'union'
     if args.intersection:  enum_mode = 'intersection'
     if args.targets_are_forbidden:  forbidden_seeds |= targets
-    # main work
+
+    # If needed, extract the sccs here, in order to time it
+    time_sccs_extraction = 0.
+    if not args.greedy and args.targets:
+        time_sccs_extraction = time.time()
+        supp_args['sccs'], supp_args['scc_dag'] = predator.compute_sccs(graph, graph_filename=graph_filename, verbose=args.verbose)
+        time_sccs_extraction = time.time() - time_sccs_extraction
+
+    # Compute available targets (union of --targets and --targets-file)
+    #  (and do the same for (forbidden) seeds).
     time_seed_search = time.time()
-    for idx, seeds in enumerate(predator.search_seeds(graph, seeds, forbidden_seeds, targets, enum_mode=enum_mode, graph_filename=graph_filename, explore_pareto=args.pareto, pareto_no_target_as_seeds=args.pareto_full, greedy=args.greedy), start=1):
+    for idx, seeds in enumerate(predator.search_seeds(graph, seeds, forbidden_seeds, targets, enum_mode=enum_mode, graph_filename=graph_filename, explore_pareto=args.pareto, pareto_no_target_as_seeds=args.pareto_full, greedy=args.greedy, **supp_args), start=1):
         repr_seeds = ', '.join(map(str, seeds))
         print(f"Solution {idx}:\n{repr_seeds}\n")
     print('end of solutions.')
-    if args.visualize:
-        print('Input graph rendered in', utils.render_network(graph, args.visualize, with_reactions=True))
-    if args.visualize_without_reactions:
-        print('Input graph rendered in', utils.render_network(graph, args.visualize_without_reactions, with_reactions=False))
     time_seed_search = time.time() - time_seed_search
 
+    # Render the graph if asked to
+    time_rendering = time.time()
+    print('Rendering…')
+    try:
+        if args.visualize:
+                print('-> Input graph rendered in', utils.render_network(graph, args.visualize, with_reactions=True))
+        if args.visualize_without_reactions:
+            print('-> Input graph rendered in', utils.render_network(graph, args.visualize_without_reactions, with_reactions=False))
+    except KeyboardInterrupt:
+        print('-> Aborted!')
+    else:
+        print('-> Ok!')
+    time_rendering = time.time() - time_rendering
+
     print('TIME DATA EXTRACTION: ', round(time_data_extraction, 2), 's', sep='')
+    print('TIME SCCs EXTRACTION: ', round(time_sccs_extraction, 2), 's', sep='')
     print('TIME   SEED SEARCH  : ', round(time_seed_search, 2), 's', sep='')
-    print('TIME      TOTAL     : ', round(time_data_extraction + time_seed_search, 2), 's', sep='')
+    print('TIME    RENDERING   : ', round(time_rendering, 2), 's', sep='')
+    print('TIME      TOTAL     : ', round(time_data_extraction + time_rendering + time_seed_search, 2), 's', sep='')

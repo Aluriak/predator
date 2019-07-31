@@ -164,7 +164,8 @@ def _pareto_with_asprin(data:str, avoid_targets_as_seeds:bool=False, discard_quo
 def search_seeds_activate_targets_iterative(graph_data:str, start_seeds:iter=(), forbidden_seeds:set=(), targets:set=(),
                                             graph_filename:str=None, enum_mode:EnumMode=EnumMode.Enumeration,
                                             compute_optimal_solutions:bool=False, filter_included_solutions:bool=True,
-                                            compute_hypothesis_from_scc:callable=None,verbose:bool=False) -> [set]:
+                                            compute_hypothesis_from_scc:callable=None, verbose:bool=False,
+                                            sccs:dict=None, scc_dag:dict=None) -> [set]:
     """Yield the set of seeds for each found solution.
 
     compute_optimal_solutions -- if True, will post-process the solutions to get
@@ -273,7 +274,10 @@ def search_seeds_activate_targets_iterative(graph_data:str, start_seeds:iter=(),
         """Yield parent SCCs. If no parent, yield None"""
         yield from rev_scc_dag[scc_name] or [None]
 
-    sccs, scc_dag = compute_sccs(graph_data, graph_filename=graph_filename, verbose=verbose)
+    if not sccs or not scc_dag:
+        _print('COMPUTE SCCs…', end='', flush=True)
+        sccs, scc_dag = compute_sccs(graph_data, graph_filename=graph_filename, verbose=verbose)
+        _print(' OK!')
     terminals = frozenset(get_terminal_nodes(scc_dag))
     rev_scc_dag = dict(inverted_dag(scc_dag))
     _print('  SCC DAG:', scc_dag)
@@ -551,8 +555,8 @@ def compute_sccs(graph_data:str, graph_filename:str=None, verbose:bool=False) ->
     If no graph_filename given, ASP will be used to infer them from graph_data.
 
     """
-    _print = print if verbose or True else lambda *_, **__: None
-    print('COMPUTE SCCS:', graph_filename)
+    _print = print if verbose else lambda *_, **__: None
+    _print('COMPUTE SCCS:', graph_filename)
     # compute the SCCs components and the SCC DAG
     if graph_filename:  # use nx.Digraph extraction to quickly extract connected components
         graph = graph_module.nxgraph_from_file(graph_filename, graph_data, with_reaction_nodes=False, quoted_names=True)
