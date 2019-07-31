@@ -100,13 +100,13 @@ def read_SBML_network(filename,
             rname = reactant.attrib.get('species')
             yield f'reactant("{rname}","{rxn_name}").'
             if use_topological_injections and reversible and not products:  # this reaction is a generator of seed
-                yield f'seed("{name}").'
+                yield f'seed("{rname}").'
 
         for product in products:
             pname = product.attrib.get('species')
             yield f'product("{pname}","{rxn_name}").'
             if use_topological_injections and not reactants:  # this reaction is a generator of seed
-                yield f'seed("{name}").'
+                yield f'seed("{pname}").'
 
     reactions = get_listOfReactions(model)
     for e in reactions:
