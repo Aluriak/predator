@@ -294,7 +294,7 @@ def search_seeds_activate_targets_iterative(graph_data:str, start_seeds:iter=(),
     # iteratively find hypothesis
     while len(scc_dag) > 1:  # last valid key is None
         for terminal in frozenset(get_terminal_nodes(scc_dag)):
-            _print('TERMINAL:', terminal)
+            _print('\nTERMINAL:', terminal)
             if terminal is None: continue
             self_hypothesis = tuple(get_hypothesis_of(terminal))
             _print('ALL HYPS:', 'len:', len(all_hypothesis), all_hypothesis, '\t(does not contains TERM HYP)')
