@@ -77,6 +77,15 @@ def get_listOfProducts(reaction) -> list:
     return listOfProducts
 
 
+def read_SBML_species(filename):
+    """Yield names of species listed in given SBML file"""
+    tree = etree.parse(filename)
+    sbml = tree.getroot()
+    model = get_model(sbml)
+    for species in get_listOfSpecies(model):
+        yield species.attrib['id']
+
+
 def read_SBML_network(filename,
                       use_topological_injections:bool=True,
                       use_semantic_injection:bool=False):

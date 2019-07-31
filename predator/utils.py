@@ -1,5 +1,6 @@
 """Utilitaries"""
 
+import os
 import clyngor
 from collections import defaultdict
 
@@ -26,6 +27,24 @@ def solve(*args, **kwargs):
             print('ERROR binary file clingo is not accessible in the PATH.')
             exit(1)
         else:  raise err
+
+
+def get_ids_from_file(fname:str) -> [str]:
+    "Yield identifiers of seeds/targets/metabolites found in given sbml or text or lp file"
+    ext = os.path.splitext(fname)[1]
+    if ext in {'.sbml', '.xml'}:  # sbml data
+        from .sbml import read_SBML_species
+        yield from read_SBML_species(fname)
+    elif ext in {'.lp'}:  # ASP data
+        for model in solve(fname).by_arity:
+            for target, in model.get('target/1', ()):
+                yield target
+    elif ext in {'.txt', ''}:  # file, one line per target
+        with open(fname) as fd:
+            yield from (line for line in map(str.strip, fd) if line)
+    else:
+        raise NotImplementedError(f"Target file of ext {ext}: {fname}")
+
 
 
 def inverted_dag(dag:dict) -> [str]:
