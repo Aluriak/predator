@@ -44,6 +44,8 @@ def cli_parser() -> argparse.ArgumentParser:
                         help="png file to render the input graph in (default: don't render)")
     parser.add_argument('--visualize-without-reactions', '-vr', type=str, default=None,
                         help="png file to render, without reactions, the input graph in (default: don't render)")
+    parser.add_argument('--visualize-dag', '-vd', type=str, default=None,
+                        help="png file to render the DAG of SCC (default: don't render)")
 
     # flags groups
     group = parser.add_mutually_exclusive_group()
@@ -127,6 +129,8 @@ if __name__ == '__main__':
         time_sccs_extraction = time.time()
         supp_args['sccs'], supp_args['scc_dag'] = predator.compute_sccs(graph, graph_filename=graph_filename, verbose=args.verbose)
         time_sccs_extraction = time.time() - time_sccs_extraction
+        if args.visualize_dag:
+            args.visualize_dag = predator.render_scc_dag(args.visualize_dag, supp_args['sccs'], supp_args['scc_dag'], targets)
 
     # Compute available targets (union of --targets and --targets-file)
     #  (and do the same for (forbidden) seeds).
@@ -145,6 +149,8 @@ if __name__ == '__main__':
                 print('-> Input graph rendered in', utils.render_network(graph, args.visualize, with_reactions=True))
         if args.visualize_without_reactions:
             print('-> Input graph rendered in', utils.render_network(graph, args.visualize_without_reactions, with_reactions=False))
+        if args.visualize_dag:
+            print('-> DAG of SCC rendered in', args.visualize_dag)
     except KeyboardInterrupt:
         print('-> Aborted!')
     else:

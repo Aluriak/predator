@@ -18,7 +18,7 @@ import networkx as nx
 import itertools
 from clyngor import opt_models_from_clyngor_answers
 from . import sbml as sbml_module, graph as graph_module
-from .utils import quoted, unquoted, solve, get_terminal_nodes, inverted_dag, remove_terminal
+from .utils import quoted, unquoted, solve, get_terminal_nodes, inverted_dag, remove_terminal, render_network
 from functools import partial
 from collections import defaultdict
 from pkg_resources import resource_filename
@@ -587,3 +587,23 @@ def compute_sccs(graph_data:str, graph_filename:str=None, verbose:bool=False) ->
     _print('         :', scc_dag)
     _print()
     return sccs, scc_dag
+
+
+def render_scc_dag(out_filename:str, sccs, scc_dag, targets):
+    scc_dag_graph = '\n'.join(
+        f'link({"root" if parent is None else parent},{child}).'
+        for parent, childs in scc_dag.items()
+        for child in childs
+    ) + '\n' '\n'.join(
+        f'annot(upper,{scc},"S").'
+        for scc, nodes in sccs.items()
+        if len(nodes) == 1
+    ) + '\n' '\n'.join(
+        f'annot(lower,{scc},"T").'
+        for scc, nodes in sccs.items()
+        if any(quoted(target) in nodes for target in targets)
+    ) + (
+        '\ndot_property(root,color,transparent).'
+        '\nobj_property(edge,arrowhead,normal).'
+    )
+    return render_network(scc_dag_graph, out_filename)
