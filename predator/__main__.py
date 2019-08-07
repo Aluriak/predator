@@ -5,6 +5,7 @@
 import os
 import time
 import argparse
+from . import prerun
 from . import graph as graph_module
 from . import predator, utils, __version__, print_info
 
@@ -57,6 +58,8 @@ def cli_parser() -> argparse.ArgumentParser:
     # flags
     parser.add_argument('--greedy', action='store_true',
                         help="Use greedy implementation for target search")
+    parser.add_argument('--no-prerun', action='store_true',
+                        help="Don't perform the preruning step")
     parser.add_argument('--no-topological-injection', action='store_true',
                         help="Do not use topological injection found in sbml data")
     parser.add_argument('--semantic-injection', action='store_true',
@@ -99,20 +102,12 @@ if __name__ == '__main__':
 
     # Extract the ASP representation from the graph file
     time_data_extraction = time.time()
-    graph = graph_module.graph_from_file(
+    initial_graph = graph = graph_module.graph_from_file(
         args.infile,
         use_topological_injections=not args.no_topological_injection,
         use_semantic_injection=args.semantic_injection
     )
     time_data_extraction = time.time() - time_data_extraction
-    graph_filename = None if args.scc_with_asp else args.infile
-    if args.export:
-        sccs, _ = predator.compute_sccs(graph)
-        scc_repr = '\n'.join(f'scc({scc_name},{node}).'
-                            for scc_name, nodes in sccs.items()
-                            for node in nodes)
-        with open(args.export, "w") as f:
-            f.write(graph + '\n' + scc_repr)
 
     # Define targets, seeds, enumeration mode,…
     targets = get_all_ids(args.targets, args.targets_file)
@@ -123,8 +118,31 @@ if __name__ == '__main__':
     if args.intersection:  enum_mode = 'intersection'
     if args.targets_are_forbidden:  forbidden_seeds |= targets
 
+    # Prerun
+    time_prerun = 'unperformed'
+    if not args.no_prerun:
+        time_prerun = time.time()
+        graph, targets, unreachables, dead_viz = prerun.on_graph(graph, forbidden_seeds, targets)
+        initial_graph += dead_viz  # indicate what are the dead parts in the vizualizations
+        time_prerun = time.time() - time_prerun
+        if unreachables and targets:
+            print('Some targets cannot be reached:',
+                  ', '.join(map(utils.unquoted, unreachables)))
+        elif unreachables:  # all targets are unreachables
+            print('No target is reachable. Abort.')
+
+    # External computation of SCCs
+    graph_filename = None if args.scc_with_asp else args.infile
+    if args.export:
+        sccs, _ = predator.compute_sccs(graph)
+        scc_repr = '\n'.join(f'scc({scc_name},{node}).'
+                            for scc_name, nodes in sccs.items()
+                            for node in nodes)
+        with open(args.export, "w") as f:
+            f.write(graph + '\n' + scc_repr)
+
     # If needed, extract the sccs here, in order to time it
-    time_sccs_extraction = 0.
+    time_sccs_extraction = 'unperformed'
     if not args.greedy and args.targets:
         time_sccs_extraction = time.time()
         supp_args['sccs'], supp_args['scc_dag'] = predator.compute_sccs(graph, graph_filename=graph_filename, verbose=args.verbose)
@@ -146,9 +164,9 @@ if __name__ == '__main__':
     print('Rendering…')
     try:
         if args.visualize:
-                print('-> Input graph rendered in', utils.render_network(graph, args.visualize, with_reactions=True))
+                print('-> Input graph rendered in', utils.render_network(initial_graph, args.visualize, with_reactions=True))
         if args.visualize_without_reactions:
-            print('-> Input graph rendered in', utils.render_network(graph, args.visualize_without_reactions, with_reactions=False))
+            print('-> Input graph rendered in', utils.render_network(initial_graph, args.visualize_without_reactions, with_reactions=False))
         if args.visualize_dag:
             print('-> DAG of SCC rendered in', args.visualize_dag)
     except KeyboardInterrupt:
@@ -160,6 +178,7 @@ if __name__ == '__main__':
     # Show the timers
     timers = {
         'DATA EXTRACTION': time_data_extraction,
+        'PRE-RUN': time_prerun,
         'SCCs EXTRACTION': time_sccs_extraction,
         'SEED SEARCH': time_seed_search,
         'RENDERING': time_rendering,
