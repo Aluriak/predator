@@ -117,6 +117,10 @@ if __name__ == '__main__':
     if args.union:  enum_mode = 'union'
     if args.intersection:  enum_mode = 'intersection'
     if args.targets_are_forbidden:  forbidden_seeds |= targets
+    if forbidden_seeds:
+        initial_graph += '\n'.join(f'annot(lower,"{fs}","F").' for fs in forbidden_seeds)
+    if targets:
+        initial_graph += '\n'.join(f'annot(upper,"{tg}","T").' for tg in targets)
 
     # Prerun
     time_prerun = 'unperformed'
