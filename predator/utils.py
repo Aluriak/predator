@@ -6,6 +6,9 @@ from collections import defaultdict
 
 
 BISEAU_VIZ = """
+#defined reactant/2.
+#defined product/2.
+#defined reaction/1.
 link(T,R) :- reactant(T,R).
 link(R,P) :- product(P,R).
 shape(R,rectangle) :- reaction(R).

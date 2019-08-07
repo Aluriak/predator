@@ -17,7 +17,7 @@ import clyngor
 import networkx as nx
 import itertools
 from clyngor import opt_models_from_clyngor_answers
-from . import sbml as sbml_module, graph as graph_module
+from . import graph as graph_module
 from .utils import quoted, unquoted, solve, get_terminal_nodes, inverted_dag, remove_terminal, render_network
 from functools import partial
 from collections import defaultdict
@@ -594,11 +594,11 @@ def render_scc_dag(out_filename:str, sccs, scc_dag, targets):
         f'link({"root" if parent is None else parent},{child}).'
         for parent, childs in scc_dag.items()
         for child in childs
-    ) + '\n' '\n'.join(
+    ) + '\n' + '\n'.join(
         f'annot(upper,{scc},"S").'
         for scc, nodes in sccs.items()
         if len(nodes) == 1
-    ) + '\n' '\n'.join(
+    ) + '\n' + '\n'.join(
         f'annot(lower,{scc},"T").'
         for scc, nodes in sccs.items()
         if any(quoted(target) in nodes for target in targets)

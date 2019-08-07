@@ -33,7 +33,7 @@ def nxgraph_from_file(fname:str, asp_data:str=None, **kwargs) -> str:
         raise NotImplementedError(f"File of extension {ext} cannot be treated")
 
 
-def nx_from_asp(asp:str, directed:bool=True):
+def nx_from_asp(asp:str, directed:bool=True) -> nx.Graph or nx.Digraph:
     "Return a nx.Digraph describing the graph given in ASP format"
     graph = (nx.DiGraph if directed else nx.Graph)()
     models = utils.solve(inline=asp).by_predicate.discard_quotes
