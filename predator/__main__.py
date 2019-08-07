@@ -157,8 +157,15 @@ if __name__ == '__main__':
         print('-> Ok!')
     time_rendering = time.time() - time_rendering
 
-    print('TIME DATA EXTRACTION: ', round(time_data_extraction, 2), 's', sep='')
-    print('TIME SCCs EXTRACTION: ', round(time_sccs_extraction, 2), 's', sep='')
-    print('TIME   SEED SEARCH  : ', round(time_seed_search, 2), 's', sep='')
-    print('TIME    RENDERING   : ', round(time_rendering, 2), 's', sep='')
-    print('TIME      TOTAL     : ', round(time_data_extraction + time_rendering + time_seed_search, 2), 's', sep='')
+    # Show the timers
+    timers = {
+        'DATA EXTRACTION': time_data_extraction,
+        'SCCs EXTRACTION': time_sccs_extraction,
+        'SEED SEARCH': time_seed_search,
+        'RENDERING': time_rendering,
+        'TOTAL': time_data_extraction + time_rendering + time_seed_search,
+    }
+    namewidth = max(map(len, timers))
+    for name, value in timers.items():
+        value = value if isinstance(value, str) else f'{round(value, 3)}s'
+        print(f'TIME {name.center(namewidth)}: {value}')
