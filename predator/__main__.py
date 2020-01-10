@@ -156,8 +156,8 @@ if __name__ == '__main__':
                 args.visualize_dag = predator.render_scc_dag(args.visualize_dag, supp_args['sccs'], supp_args['scc_dag'], targets)
             else:
                 args.visualize_dag = predator.render_scc_dag(args.visualize_dag, supp_args['sccs'], supp_args['scc_dag'], targets = set())
-                supp_args.pop('sccs', None)
-                supp_args.pop('scc_dag', None)
+                del supp_args['sccs']
+                del supp_args['scc_dag']
 
     # Compute available targets (union of --targets and --targets-file)
     #  (and do the same for (forbidden) seeds).
