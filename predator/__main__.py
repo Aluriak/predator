@@ -126,7 +126,7 @@ if __name__ == '__main__':
     time_prerun = 'unperformed'
     if not args.no_prerun:
         time_prerun = time.time()
-        graph, targets, unreachables, dead_viz = prerun.on_graph(graph, forbidden_seeds, targets)
+        graph, graph_filename, targets, unreachables, dead_viz = prerun.on_graph(graph, forbidden_seeds, targets, verbose=args.verbose)
         initial_graph += dead_viz  # indicate what are the dead parts in the vizualizations
         time_prerun = time.time() - time_prerun
         if unreachables and targets:
@@ -135,8 +135,7 @@ if __name__ == '__main__':
         elif unreachables:  # all targets are unreachables
             print('No target is reachable. Abort.')
 
-    # External computation of SCCs
-    graph_filename = None if args.scc_with_asp else args.infile
+    # Export of ASP data.  TODO: use external computation of SCCs if available
     if args.export:
         sccs, _ = predator.compute_sccs(graph)
         scc_repr = '\n'.join(f'scc({scc_name},{node}).'
@@ -145,7 +144,10 @@ if __name__ == '__main__':
         with open(args.export, "w") as f:
             f.write(graph + '\n' + scc_repr)
 
-    # If needed, extract the sccs here, in order to time it
+    # What is the filename contaning the graph ?
+    graph_filename = None if args.scc_with_asp else args.infile
+
+    # External computation of SCCs
     time_sccs_extraction = 'unperformed'
     if not args.greedy and args.targets:
         time_sccs_extraction = time.time()
@@ -157,7 +159,7 @@ if __name__ == '__main__':
     # Compute available targets (union of --targets and --targets-file)
     #  (and do the same for (forbidden) seeds).
     time_seed_search = time.time()
-    for idx, seeds in enumerate(predator.search_seeds(graph, seeds, forbidden_seeds, targets, enum_mode=enum_mode, graph_filename=graph_filename, explore_pareto=args.pareto, pareto_no_target_as_seeds=args.pareto_full, greedy=args.greedy, **supp_args), start=1):
+    for idx, seeds in enumerate(predator.search_seeds(graph, seeds, forbidden_seeds, targets, enum_mode=enum_mode, graph_filename=graph_filename, explore_pareto=args.pareto, pareto_no_target_as_seeds=args.pareto_full, greedy=args.greedy, prerun=False, verbose=args.verbose, **supp_args), start=1):
         repr_seeds = ', '.join(map(str, seeds))
         print(f"Solution {idx}:\n{repr_seeds}\n")
     print('end of solutions.')
