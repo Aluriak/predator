@@ -17,7 +17,7 @@ import clyngor
 import networkx as nx
 import itertools
 from clyngor import opt_models_from_clyngor_answers
-from . import graph as graph_module
+from . import graph as graph_module, prerun as prerun_module
 from .utils import quoted, unquoted, solve, get_terminal_nodes, inverted_dag, remove_terminal, render_network
 from functools import partial
 from collections import defaultdict
@@ -73,13 +73,23 @@ assert os.path.exists(ASP_SRC_SIMPLE_SEED_SOLVING), ASP_SRC_SIMPLE_SEED_SOLVING
 def search_seeds(graph_data:str='', start_seeds:iter=(), forbidden_seeds:iter=(),
                  targets:set=(), graph_filename:str=None, enum_mode:str=EnumMode.Enumeration,
                  explore_pareto:bool=False, pareto_no_target_as_seeds:bool=False,
-                 greedy:bool=False, **kwargs) -> [{set}]:
+                 greedy:bool=False, prerun:bool=True, verbose:bool=False, **kwargs) -> [{set}]:
     "Wrapper around all seeds search methods. The used methods depends of given parameters."
+    enum_mode = EnumMode(enum_mode)
+    # get graph data
     if not graph_data and graph_filename:
         graph_data = graph_module.graph_from_file(graph_filename)
     if not graph_data and not graph_filename:
         raise ValueError("No input data provided: expecting graph_data or graph_filename argument")
-    enum_mode = EnumMode(enum_mode)
+    # pre-run, to discard dead branches due to forbidden_seeds and ensure targets reachability
+    if prerun:
+        graph_data, graph_filename, targets, unreachables, _ = prerun_module.on_graph(graph_data, forbidden_seeds, targets, verbose=verbose)
+        if verbose:
+            if unreachables and targets:
+                print('Some targets cannot be reached:', ', '.join(unreachables))
+            elif unreachables:  # all targets are unreachables
+                print('No target is reachable. Abort.')
+    # detect which is the function to call, and its parameters
     if not targets:  # no target, just activate everything
         func = search_seeds_activate_all
         if 'compute_optimal_solutions' in kwargs:  del kwargs['compute_optimal_solutions']
@@ -91,10 +101,10 @@ def search_seeds(graph_data:str='', start_seeds:iter=(), forbidden_seeds:iter=()
         if 'compute_optimal_solutions' in kwargs:  del kwargs['compute_optimal_solutions']
     else:  # efficient search of targets
         func = search_seeds_activate_targets_iterative
-    if kwargs.get('verbose'):
+    if verbose:
         print('FUNC:', func)  # search_seeds_activate_targets_iterative
         print('KWARGS:', kwargs)
-    yield from func(graph_data, frozenset(start_seeds), frozenset(forbidden_seeds), frozenset(targets), graph_filename, enum_mode, **kwargs)
+    yield from func(graph_data, frozenset(start_seeds), frozenset(forbidden_seeds), frozenset(targets), graph_filename, enum_mode, verbose=verbose, **kwargs)
 
 
 def search_iterative_pareto_front(graph_data:str, start_seeds:iter=(), forbidden_seeds:set=(), targets:set=(),
@@ -288,8 +298,8 @@ def search_seeds_activate_targets_iterative(graph_data:str, start_seeds:iter=(),
     # associate an empty hypothesis for each SCC having a target.
     targets = frozenset(map(quoted, targets))
     for scc, nodes in sccs.items():
-        _print('SEARCHING TARGETS:', nodes, targets, nodes & targets)
         if nodes & targets:  # the terminal SCC has an aim
+            if verbose:  _print('SEARCHING TARGETS:', scc, 'has target', nodes & targets)
             all_hypothesis.append(get_null_hypothesis(scc))
     # iteratively find hypothesis
     while len(scc_dag) > 1:  # last valid key is None
@@ -476,7 +486,7 @@ def _compute_hypothesis_from_scc__pareto(scc_name:str, scc_encoding:set, sccs:di
 
 def search_seeds_activate_targets_greedy(graph_data:str, start_seeds:iter=(), forbidden_seeds:set=(), targets:set=(),
                                          graph_filename:str=None, enum_mode:EnumMode=EnumMode.Enumeration,
-                                         compute_optimal_solutions:bool=False, filter_included_solutions:bool=True) -> [{set}]:
+                                         compute_optimal_solutions:bool=False, filter_included_solutions:bool=True, verbose:bool=False) -> [{set}]:
     """Yield the set of seeds for each found solution.
 
     This implements the activation of targets: find the minimum sets
@@ -487,14 +497,17 @@ def search_seeds_activate_targets_greedy(graph_data:str, start_seeds:iter=(), fo
     They are here only to mimic search_seeds_activate_targets_iterative API.
 
     """
+    _print = print if verbose else lambda *x, **k: None
     if not targets:
         raise ValueError("search_seeds_activate_targets_greedy() requires targets. Use another function, search_seeds(), or provide targets.")
     start_seeds_repr = ' '.join(f'seed({quoted(s)}).' for s in start_seeds)
     targets_repr = ' '.join(f'target({quoted(t)}).' for t in targets)
     forb_repr = ' '.join(f'forbidden({quoted(s)}).' for s in forbidden_seeds)
     data_repr = graph_data + start_seeds_repr + forb_repr + targets_repr
+    _print(f'Search seeds validating the {len(targets)} targets…')
     models = solve((ASP_SRC_GREEDY_TARGET_SEED_SOLVING, ASP_SRC_GREEDY_TARGET_SEED_SOLVING_SEED_MINIMALITY),
                    inline=data_repr, options='--opt-mode=optN ' + enum_mode.clingo_option).discard_quotes.by_predicate
+    _print(f'\t', models.command)
     if enum_mode is EnumMode.Enumeration:
         models = opt_models_from_clyngor_answers(models)
     else:
@@ -502,11 +515,14 @@ def search_seeds_activate_targets_greedy(graph_data:str, start_seeds:iter=(), fo
             _models = [model]
         models = _models
     for model in models:
-        seeds = frozenset(args[0] for args in model['seed'] if len(args) == 1)
+        if 'seed' not in model:
+            _print('\tNo seed found')
+        seeds = frozenset(args[0] for args in model.get('seed', ()) if len(args) == 1)
         yield seeds
 
 
-def search_seeds_activate_all(graph_data:str, start_seeds:iter=(), forbidden_seeds:set=(), targets:set=(), graph_filename:str=None, enum_mode:EnumMode=EnumMode.Enumeration) -> [{set}]:
+def search_seeds_activate_all(graph_data:str, start_seeds:iter=(), forbidden_seeds:set=(), targets:set=(),
+                              graph_filename:str=None, enum_mode:EnumMode=EnumMode.Enumeration, verbose:bool=False) -> [{set}]:
     """Yield the set of seeds for each found solution.
 
     This implements the most simple solution: no targets, find the minimum sets
@@ -515,6 +531,7 @@ def search_seeds_activate_all(graph_data:str, start_seeds:iter=(), forbidden_see
     Use SCC optimization, starting from SCC root, going to leaves.
 
     """
+    _print = print if verbose else lambda *x, **k: None
     if targets:
         raise ValueError("search_seeds_activate_all() does not handle targets. Use another method that supports it, or search_seeds().")
     start_seeds_repr = ' '.join(f'seed({quoted(s)}).' for s in start_seeds)
@@ -523,19 +540,25 @@ def search_seeds_activate_all(graph_data:str, start_seeds:iter=(), forbidden_see
     sccs, scc_dag = compute_sccs(graph_data, graph_filename=graph_filename)
     roots = scc_dag[None]
     scc_seeds = {}  # scc name: list of {optimal seeds}
+    _print('Activation starting…')
     for scc_name, nodes in sccs.items():
         scc_repr = ' '.join(f'scc({scc_name},{node}).' for node in nodes)
         scc_data = f'current_scc({scc_name}). {scc_repr} {start_seeds_repr} {forbidden_repr}'
         # print('DATA:\n    ' + scc_data)
         # print('    ' + graph_data)
         # print()
+        _print(f'\tActivating SCC {scc_name} ({len(nodes)} nodes: {nodes})…')
+        _print('\t',graph_data, scc_data)
         models = solve(ASP_SRC_SIMPLE_SEED_SOLVING, inline=graph_data + scc_data, options='--opt-mode=optN ' + enum_mode.clingo_option, delete_tempfile=False)
+        _print('\tCMD:', models.command)
         models = opt_models_from_clyngor_answers(models.by_predicate.discard_quotes)
         scc_seeds[scc_name] = tuple(frozenset(args[0] for args in model.get('seed', ())) for model in models)
-        # print('OUTPUT SEEDS:', scc_seeds[scc_name])
+        _print('\t\tFound:', scc_seeds[scc_name])
     # generate all possibilities
     sets_of_seeds_sets = scc_seeds.values()
     # seeds_set is a combination of possible set of seeds for each SCC
+    _print('SET OF SEEDS SETS:', sets_of_seeds_sets)
+    if not sets_of_seeds_sets:  return  # no solution available
     seed_combinations = (frozenset.union(*seeds_sets) for seeds_sets in itertools.product(*sets_of_seeds_sets))
     if enum_mode is EnumMode.Union:
         seed_combinations = [frozenset.union(*seed_combinations)]
