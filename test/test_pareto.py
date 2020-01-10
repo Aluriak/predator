@@ -10,9 +10,87 @@ def test_simple_reaction_chain():
     # utils.render_network(graph, 'todel.png')  # uncomment to help debugging
     seeds_sets = {frozenset('a')}
     assert seeds_sets == set(search_seeds(graph, targets='t', forbidden_seeds='t', explore_pareto=True, greedy=True))
+    assert seeds_sets == set(search_seeds(graph, targets='t', explore_pareto=True, greedy=True))
     seeds_sets = {frozenset('a')}
-    assert seeds_sets == set(search_seeds(graph, targets='t', forbidden_seeds='t', explore_pareto=True, greedy=False))
+    assert seeds_sets == set(search_seeds(graph, targets='t', forbidden_seeds='t', explore_pareto=True, greedy=False, verbose=True))
+    assert seeds_sets == set(search_seeds(graph, targets='t', explore_pareto=True, greedy=False))
 
+def test_long_reaction_chain():
+    "L -> O -> N -> G -> E -> R: only L can be chosen, because it maximizes the scope"
+    graph = quoted_data('reactant(l,1). product(o,1). reaction(1).'
+                        'reactant(o,2). product(n,2). reaction(2).'
+                        'reactant(n,3). product(g,3). reaction(3).'
+                        'reactant(g,4). product(e,4). reaction(4).'
+                        'reactant(e,5). product(r,5). reaction(5).')
+    # utils.render_network(graph, 'todel.png')  # uncomment to help debugging
+    seeds_sets = {frozenset('l')}
+    assert seeds_sets == set(search_seeds(graph, prerun=False))
+    assert seeds_sets == set(search_seeds(graph, targets='r', explore_pareto=True, greedy=True, prerun=False))
+    assert seeds_sets == set(search_seeds(graph, targets='r', explore_pareto=True, greedy=False, prerun=False))
+    # Proof that the forbidden_seeds support has hard-to-manage side-effects:
+    seeds_sets = {frozenset('o')}
+    assert seeds_sets == set(search_seeds(graph, targets='r', forbidden_seeds='l', explore_pareto=True, greedy=True, prerun=False))
+    # If prerun is forgot, this one will fail, because no model is generated:
+    assert seeds_sets == set(search_seeds(graph, targets='r', forbidden_seeds='l', explore_pareto=True, greedy=False, prerun=True))
+    # Because once arrived at SCC l, it is impossible to make use of it.
+    # Prerun is fixing that.
+
+def test_forbidden_intermediate_nodes():
+    "Test the handling of middle SCC that are completely forbidden"
+    graph = quoted_data('reactant((a;b;c),1). product(d,1). reaction(1).'
+                        'reactant(d,2). product(e,2). reaction(2).')
+    # utils.render_network(graph, 'todel.png')  # uncomment to help debugging
+    seeds_sets = {frozenset('e'), frozenset('abc'), frozenset('ae'), frozenset('be'), frozenset('ce')}
+    assert seeds_sets == set(search_seeds(graph, targets='e', forbidden_seeds='d', explore_pareto=True, greedy=True, prerun=False))
+    seeds_sets = {frozenset('e'), frozenset('abc')}
+    assert seeds_sets == set(search_seeds(graph, targets='e', forbidden_seeds='d', prerun=False))
+    assert seeds_sets == set(search_seeds(graph, targets='e', forbidden_seeds='d', explore_pareto=True, prerun=False, verbose=True))
+    # cf test_forbidden_sources() for explanations of why the previous line would fail.
+
+def test_forbidden_sources():
+    "Test the handling of root SCC that are completely forbidden"
+    graph = quoted_data('reactant(a,1). product(b,1). reaction(1).'
+                        'reactant(b,2). product(a,2). reaction(2).'
+                        'reactant(b,3). product(c,3). reaction(3).'
+                        'reactant(c,4). product(d,4). reaction(4).')
+    utils.render_network(graph, 'todel.png')  # uncomment to help debugging
+    seeds_sets = {frozenset('a'), frozenset('b')}
+    assert seeds_sets == set(search_seeds(graph))
+    assert seeds_sets == set(search_seeds(graph, greedy=True))
+    assert seeds_sets == set(search_seeds(graph, targets='d', explore_pareto=True))
+    seeds_sets = {frozenset('a'), frozenset('b'), frozenset('d')}
+    assert seeds_sets == set(search_seeds(graph, targets='d', forbidden_seeds='c', greedy=True))
+    assert seeds_sets == set(search_seeds(graph, targets='d', forbidden_seeds='c'))
+    seeds_sets = {frozenset('c'), frozenset('d')}
+    assert seeds_sets == set(search_seeds(graph, targets='d', forbidden_seeds='ab', greedy=True))
+    assert seeds_sets == set(search_seeds(graph, targets='d', forbidden_seeds='ab'))
+    seeds_sets = {frozenset('c')}
+    assert seeds_sets == set(search_seeds(graph, targets='d', forbidden_seeds='abd', greedy=True))
+    assert seeds_sets == set(search_seeds(graph, targets='d', forbidden_seeds='abd'))
+    seeds_sets = {frozenset('d')}
+    assert seeds_sets == set(search_seeds(graph, targets='d', forbidden_seeds='abc', greedy=True))
+    assert seeds_sets == set(search_seeds(graph, targets='d', forbidden_seeds='abc'))
+    seeds_sets = set()
+    assert seeds_sets == set(search_seeds(graph, targets='d', forbidden_seeds='abcd', greedy=True))
+    assert seeds_sets == set(search_seeds(graph, targets='d', forbidden_seeds='abcd'))
+
+    # But with forbidden seeds, it's not that obvious:
+    # once arrived at SCC a (containing a and b), it is impossible to do anything.
+    seeds_sets = {frozenset('a'), frozenset('b')}
+    assert seeds_sets == set(search_seeds(graph, targets='d', forbidden_seeds='d', explore_pareto=True, greedy=True))
+    assert seeds_sets == set(search_seeds(graph, targets='d', forbidden_seeds='d', explore_pareto=True))
+    seeds_sets = {frozenset('a')}
+    assert seeds_sets == set(search_seeds(graph, targets='d', forbidden_seeds='b', explore_pareto=True, greedy=True))
+    assert seeds_sets == set(search_seeds(graph, targets='d', forbidden_seeds='b', explore_pareto=True, compute_optimal_solutions=True))
+    seeds_sets = {frozenset('c'), frozenset('a')}
+    assert seeds_sets == set(search_seeds(graph, targets='d', forbidden_seeds='b', explore_pareto=True, compute_optimal_solutions=False))
+    seeds_sets = {frozenset('b')}
+    assert seeds_sets == set(search_seeds(graph, targets='d', forbidden_seeds='a', explore_pareto=True, greedy=True))
+    assert seeds_sets == set(search_seeds(graph, targets='d', forbidden_seeds='a', explore_pareto=True, compute_optimal_solutions=True))
+    seeds_sets = {frozenset('c'), frozenset('b')}
+    assert seeds_sets == set(search_seeds(graph, targets='d', forbidden_seeds='a', explore_pareto=True, compute_optimal_solutions=False))
+    seeds_sets = {frozenset('c')}
+    assert seeds_sets == set(search_seeds(graph, targets='d', forbidden_seeds='ab', explore_pareto=True))
 
 def test_simple_reaction_chain_with_double_root():
     "Same as previous, but with A+B -> C, allowing pareto front to choose either A+B or C."
@@ -40,7 +118,7 @@ def test_one_scc():
                            reactant(d,3). product(a,3). reaction(3).
                            reactant((d;e),4). product(f,4). reaction(4).
                            reactant(f,5). product(c,5). reaction(5).""")
-    utils.render_network(graph, 'todel.png')  # uncomment to help debugging
+    # utils.render_network(graph, 'todel.png')  # uncomment to help debugging
     expected_seeds_sets = {frozenset('d'), frozenset('de')}  # 'af' would have been welcome, but does not cover as much as 'de'
     assert expected_seeds_sets == set(search_seeds(graph, targets='d', explore_pareto=True, greedy=True, avoid_targets_as_seeds=True))
     assert expected_seeds_sets == set(search_seeds(graph, targets='d', explore_pareto=True, greedy=True, avoid_targets_as_seeds=False))  # invariant
