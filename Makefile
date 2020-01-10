@@ -1,6 +1,6 @@
 
 run:
-	python -m predator networks/toy_1.sbml -v viz.png -vr viz-nor.png
+	python -m predator networks/toy_1.sbml -v viz.png -vr viz-nor.png -vd viz-dag.png
 
 t: test
 tf: testff
