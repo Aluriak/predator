@@ -2,14 +2,16 @@
 feeding it to search_seeds.
 
 """
+import tempfile
 import clyngor
 import networkx as nx
 import itertools
 from . import graph as graph_module
 from .utils import quoted, unquoted, solve
 
-def on_graph(graph:str, forbidden_seeds:iter=(), targets:set=()) -> (nx.DiGraph, frozenset, frozenset, str):
-    """Return the new graph object, the new set of targets, the set of unreachables targets,
+
+def on_graph(graph:str, forbidden_seeds:iter=(), targets:set=(), verbose=False) -> (nx.DiGraph, str, frozenset, frozenset, str):
+    """Return the new graph object, the new graph filename, the new set of targets, the set of unreachables targets,
     and the ASP/biseau encoding to add to the input graph to represent the dead parts of the graph"""
 
     # print('GRAPH:', graph)
@@ -22,13 +24,14 @@ activated(R) :- reaction(R) ; activated(T): reactant(T,R).
 activated(M) :- metabolite(M) ; product(M,R) ; activated(R).
 dead(R) :-  reaction(R)  ; not activated(R).
 dead(M) :- metabolite(M) ; not activated(M).
-% if one of its reactant is dead, a reaction is also dead
-%dead(R) :- reaction(R) ; reactant(C,R) ; dead(C).  % not needed ?
+% Ensure that activated nodes that are alone still are included in the new graph.
+singleton_metabolite(M) :- metabolite(M) ; dead(R): product(M,R) ; dead(R): reactant(M,R) ; not dead(M).
 #show.
-#show reactant(M,R): reactant(M,R), not dead(R).
+#show reactant(M,R): reactant(M,R), not dead(R) ; not dead(M).
 #show product(M,R): product(M,R), not dead(R), not dead(M).
-#show reaction(R): reaction(R), not dead(R).
+#show reaction(R): reaction(R), not dead(R) ; reactant(M,R) ; not dead(M).
 #show target(T): target(T), not dead(T).
+#show metabolite(M): singleton_metabolite(M).
 #show dead/1.
 """ + (
     '\n' + '\n'.join(f'forbidden("{fs}").' for fs in forbidden_seeds) +
@@ -40,14 +43,18 @@ dead(M) :- metabolite(M) ; not activated(M).
     # print('\nTOSOLVE:\n' + tosolve + '\n')
     # print('CMD:', '"' + models.command + '"')  # WOOT ? TODO
     for model in models:
-        graph = get_atoms(model, ('reactant', 'product', 'reaction'))
+        graph = get_atoms(model, ('reactant', 'product', 'reaction', 'metabolite'))
+        if not graph:  # everything was dead
+            graph = '%* nothing in the graph was reachable *%\n'
+            if verbose:
+                print('Nothing in the graph is reachable: all the graph was wiped.')
         # print('NEW GRAPH:', graph)
         dead_parts = get_atoms(model, ('dead',))
         # print('DEAD parts:', dead_parts)
         biseau_rules = '\n' + dead_parts + '\ncolor(X,black):- dead(X).\ndot_property(X,fontcolor,white):- dead(X).'
         # print('BISEAU RULES:', biseau_rules)
         new_targets = {unquoted(t) for t, in model.get('target', ())}
-        unfullfilled_targets = set(map(quoted, targets - new_targets))
+        unfullfilled_targets = set(map(quoted, set(targets) - new_targets))
         # print('NEW TARGETS:', new_targets)
         # print('    TARGETS:', targets)
         # print('UNFULLFILLS:', unfullfilled_targets)
@@ -55,7 +62,12 @@ dead(M) :- metabolite(M) ; not activated(M).
     else:
         print('Unexpected multiple models for prerun.on_graph solving')
         exit(1)
-    return graph, new_targets, unfullfilled_targets, biseau_rules
+    with tempfile.NamedTemporaryFile('w', suffix='.lp', delete=False) as fd:
+        fd.write(graph)
+        new_graph_filename = fd.name
+        if verbose:
+            print(f'Pre-processed graph saved in file {new_graph_filename}.')
+    return graph, new_graph_filename, new_targets, unfullfilled_targets, biseau_rules
 
 
 def get_atoms(model:dict, wanted_atoms:[str]) -> str:
