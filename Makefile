@@ -5,10 +5,13 @@ run:
 
 t: test
 tf: testff
+ts: testspec
 test:
 	python -m pytest -vv test predator --doctest-module
 testff:  # --failed-first and --exitfirst argument
 	python -m pytest -vv test predator --failed-first --exitfirst --doctest-module
+testspec:  # --failed-first and --exitfirst argument
+	python -m pytest -vv test predator --doctest-module --durations=0 -k orbidden_so
 
 black:
 	black predator
