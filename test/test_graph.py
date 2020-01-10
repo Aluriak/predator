@@ -22,7 +22,7 @@ def test_sccs_dag_complex():
 
 def test_sccs_dag_cycle_4():
     dag = sccs_dag_from_nxdigraph(nx_from_asp('edge(a,b).edge(b,c).edge(c,d).edge(d,a).'))
-    assert dag == {None: {'a'}}
+    assert dag == {None: {'a'}, 'a': set()}
 
 
 def test_sccs_dag_cycle_4_alt():
