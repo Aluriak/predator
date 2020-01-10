@@ -33,17 +33,36 @@ def nxgraph_from_file(fname:str, asp_data:str=None, **kwargs) -> str:
         raise NotImplementedError(f"File of extension {ext} cannot be treated")
 
 
-def nx_from_asp(asp:str, directed:bool=True) -> nx.Graph or nx.Digraph:
-    "Return a nx.Digraph describing the graph given in ASP format"
+def nx_from_asp(asp:str, directed:bool=True, with_reaction_nodes:bool=False, quoted_names:bool=False) -> nx.Graph or nx.Digraph:
+    """Return a nx.Digraph describing the graph given in ASP format,
+    using node/1, edge/2, metabolite/1, reaction/1, product/2 and reactant/2 atoms."""
+    quoted = utils.quoted if quoted_names else lambda x: x
     graph = (nx.DiGraph if directed else nx.Graph)()
-    models = utils.solve(inline=asp).by_predicate.discard_quotes
+    models = utils.solve(inline=asp).by_arity.discard_quotes
     for model in models:
-        for args in model.get('node', ()):
-            if len(args) == 1:
-                graph.add_node(*args)
-        for args in model.get('edge', ()):
-            if len(args) == 2:
-                graph.add_edge(*args)
+        for node, in model.get('node/1', ()):
+            graph.add_node(quoted(node))
+        for src, trg in model.get('edge/2', ()):
+            graph.add_edge(quoted(src), quoted(trg))
+        for node, in model.get('metabolite/1', ()):
+            graph.add_node(quoted(node))
+        if with_reaction_nodes:
+            for node, in model.get('reaction/1', ()):
+                graph.add_node(quoted(node))
+            for prd, rct in model.get('product/2', ()):
+                graph.add_edge(quoted(rct), quoted(prd))
+            for met, rct in model.get('reactant/2', ()):
+                graph.add_edge(quoted(met), quoted(rct))
+        else:  # no reaction node: directly link reactant to products.
+            reactions = defaultdict(lambda: (set(), set()))  # name: ({reactants}, {products})
+            for prd, rct in model.get('product/2', ()):
+                reactions[rct][1].add(quoted(prd))
+            for met, rct in model.get('reactant/2', ()):
+                reactions[rct][0].add(quoted(met))
+            for reactants, products in reactions.values():
+                for reactant in reactants:
+                    for product in products:
+                        graph.add_edge(reactant, product)
     return graph
 
 
