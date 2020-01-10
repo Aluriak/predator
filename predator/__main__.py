@@ -147,12 +147,17 @@ if __name__ == '__main__':
 
     # If needed, extract the sccs here, in order to time it
     time_sccs_extraction = 'unperformed'
-    if not args.greedy and args.targets:
-        time_sccs_extraction = time.time()
-        supp_args['sccs'], supp_args['scc_dag'] = predator.compute_sccs(graph, graph_filename=graph_filename, verbose=args.verbose)
-        time_sccs_extraction = time.time() - time_sccs_extraction
+    if not args.greedy:
         if args.visualize_dag:
-            args.visualize_dag = predator.render_scc_dag(args.visualize_dag, supp_args['sccs'], supp_args['scc_dag'], targets)
+            time_sccs_extraction = time.time()
+            supp_args['sccs'], supp_args['scc_dag'] = predator.compute_sccs(graph, graph_filename=graph_filename, verbose=args.verbose)
+            time_sccs_extraction = time.time() - time_sccs_extraction
+            if args.targets:
+                args.visualize_dag = predator.render_scc_dag(args.visualize_dag, supp_args['sccs'], supp_args['scc_dag'], targets)
+            else:
+                args.visualize_dag = predator.render_scc_dag(args.visualize_dag, supp_args['sccs'], supp_args['scc_dag'], targets = set())
+                supp_args.pop('sccs', None)
+                supp_args.pop('scc_dag', None)
 
     # Compute available targets (union of --targets and --targets-file)
     #  (and do the same for (forbidden) seeds).
