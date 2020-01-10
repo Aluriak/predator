@@ -32,3 +32,8 @@ def test_sccs_dag_cycle_4_alt():
                                       'reactant(d,r4).reaction(r4).product(a,r4).'
                                       , verbose=True)
     assert dag == {None: {'a'}}
+
+
+def test_sccs_alone_nodes():
+    dag = sccs_dag_from_nxdigraph(nx_from_asp('node(a;b).'))
+    assert dag == {None: {'a', 'b'}, 'a': set(), 'b': set()}
