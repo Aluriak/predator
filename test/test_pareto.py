@@ -39,12 +39,16 @@ def test_forbidden_intermediate_nodes():
     "Test the handling of middle SCC that are completely forbidden"
     graph = quoted_data('reactant((a;b;c),1). product(d,1). reaction(1).'
                         'reactant(d,2). product(e,2). reaction(2).')
-    # utils.render_network(graph, 'todel.png')  # uncomment to help debugging
+    utils.render_network(graph, 'todel.png')  # uncomment to help debugging
     seeds_sets = {frozenset('e'), frozenset('abc'), frozenset('ae'), frozenset('be'), frozenset('ce')}
     assert seeds_sets == set(search_seeds(graph, targets='e', forbidden_seeds='d', explore_pareto=True, greedy=True, prerun=False))
+    assert seeds_sets == set(search_seeds(graph, targets='e', forbidden_seeds='d', explore_pareto=True, greedy=True, prerun=False))
+    seeds_sets = {frozenset('e')}
+    assert seeds_sets == set(search_seeds(graph, targets='e', forbidden_seeds='d', prerun=False, compute_optimal_solutions=True))
     seeds_sets = {frozenset('e'), frozenset('abc')}
     assert seeds_sets == set(search_seeds(graph, targets='e', forbidden_seeds='d', prerun=False))
     assert seeds_sets == set(search_seeds(graph, targets='e', forbidden_seeds='d', explore_pareto=True, prerun=False, verbose=True))
+    assert seeds_sets == set(search_seeds(graph, targets='e', forbidden_seeds='d', explore_pareto=True, prerun=True, verbose=True))
     # cf test_forbidden_sources() for explanations of why the previous line would fail.
 
 def test_forbidden_sources():
@@ -53,7 +57,7 @@ def test_forbidden_sources():
                         'reactant(b,2). product(a,2). reaction(2).'
                         'reactant(b,3). product(c,3). reaction(3).'
                         'reactant(c,4). product(d,4). reaction(4).')
-    utils.render_network(graph, 'todel.png')  # uncomment to help debugging
+    # utils.render_network(graph, 'todel.png')  # uncomment to help debugging
     seeds_sets = {frozenset('a'), frozenset('b')}
     assert seeds_sets == set(search_seeds(graph))
     assert seeds_sets == set(search_seeds(graph, greedy=True))
@@ -82,12 +86,12 @@ def test_forbidden_sources():
     seeds_sets = {frozenset('a')}
     assert seeds_sets == set(search_seeds(graph, targets='d', forbidden_seeds='b', explore_pareto=True, greedy=True))
     assert seeds_sets == set(search_seeds(graph, targets='d', forbidden_seeds='b', explore_pareto=True, compute_optimal_solutions=True))
-    seeds_sets = {frozenset('c'), frozenset('a')}
+    # seeds_sets = {frozenset('c'), frozenset('a')}  # pareto exploration find optimals before compute_optimal_solutions post-process
     assert seeds_sets == set(search_seeds(graph, targets='d', forbidden_seeds='b', explore_pareto=True, compute_optimal_solutions=False))
     seeds_sets = {frozenset('b')}
     assert seeds_sets == set(search_seeds(graph, targets='d', forbidden_seeds='a', explore_pareto=True, greedy=True))
     assert seeds_sets == set(search_seeds(graph, targets='d', forbidden_seeds='a', explore_pareto=True, compute_optimal_solutions=True))
-    seeds_sets = {frozenset('c'), frozenset('b')}
+    # seeds_sets = {frozenset('c'), frozenset('b')}  # pareto exploration find optimals before compute_optimal_solutions post-process
     assert seeds_sets == set(search_seeds(graph, targets='d', forbidden_seeds='a', explore_pareto=True, compute_optimal_solutions=False))
     seeds_sets = {frozenset('c')}
     assert seeds_sets == set(search_seeds(graph, targets='d', forbidden_seeds='ab', explore_pareto=True))
