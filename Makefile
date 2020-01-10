@@ -7,9 +7,9 @@ t: test
 tf: testff
 ts: testspec
 test:
-	python -m pytest -vv test predator --doctest-module
+	python -m pytest -vv test predator --doctest-module --durations=0
 testff:  # --failed-first and --exitfirst argument
-	python -m pytest -vv test predator --failed-first --exitfirst --doctest-module
+	python -m pytest -vv test predator --failed-first --exitfirst --doctest-module --durations=0
 testspec:  # --failed-first and --exitfirst argument
 	python -m pytest -vv test predator --doctest-module --durations=0 -k orbidden_so
 
