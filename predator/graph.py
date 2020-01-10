@@ -88,6 +88,12 @@ def sccs_dag_from_nxdigraph(graph:nx.DiGraph, sccs:dict=None) -> dict:
     #  hence are in `no_successors`, but careful not to add the DAG terminals
     all_dag_leafs = set(itertools.chain.from_iterable(scc_dag.values()))
     roots |= {scc for scc in sccs.keys() if scc in no_successors and scc not in all_dag_leafs}
+    # Ensure the treatment of roots without childs:
+    #  if a root is only in scc_dag[None], it will not be treated, so we
+    #  add them with empty set of child in the scc_dag.
+    for root in roots:
+        if root not in scc_dag:
+            scc_dag[root] = set()
     # last verifications before returning the DAG
     assert not non_root & roots, non_root & roots
     scc_dag[None] = roots
