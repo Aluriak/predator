@@ -449,7 +449,7 @@ def _compute_hypothesis_from_scc__minimization(scc_name:str, scc_encoding:set, s
         for model in models:  pass
         models = [model] if model else []
     else:  # for intersection and enumeration, just get optimums
-        models = opt_models_from_clyngor_answers(models)
+        models = tuple(opt_models_from_clyngor_answers(models))
     yield from __compute_hypothesis_from_scc(models, scc_name, scc_encoding, sccs, rev_scc_dag, enum_mode, verbose)
 
 
