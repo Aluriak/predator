@@ -39,17 +39,33 @@ def test_forbidden_intermediate_nodes():
     "Test the handling of middle SCC that are completely forbidden"
     graph = quoted_data('reactant((a;b;c),1). product(d,1). reaction(1).'
                         'reactant(d,2). product(e,2). reaction(2).')
-    utils.render_network(graph, 'todel.png')  # uncomment to help debugging
+    # utils.render_network(graph, 'todel.png')  # uncomment to help debugging
     seeds_sets = {frozenset('e'), frozenset('abc'), frozenset('ae'), frozenset('be'), frozenset('ce')}
     assert seeds_sets == set(search_seeds(graph, targets='e', forbidden_seeds='d', explore_pareto=True, greedy=True, prerun=False))
     assert seeds_sets == set(search_seeds(graph, targets='e', forbidden_seeds='d', explore_pareto=True, greedy=True, prerun=False))
     seeds_sets = {frozenset('e')}
     assert seeds_sets == set(search_seeds(graph, targets='e', forbidden_seeds='d', prerun=False, compute_optimal_solutions=True))
+    seeds_sets = {frozenset('d'), frozenset('abc')}
+    assert seeds_sets == set(search_seeds(graph, targets='e', explore_pareto=True, prerun=True))  # d as seeds covers more metabolites + less targets as seeds
+    assert seeds_sets == set(search_seeds(graph, targets='e', explore_pareto=True, prerun=False))
     seeds_sets = {frozenset('e'), frozenset('abc')}
     assert seeds_sets == set(search_seeds(graph, targets='e', forbidden_seeds='d', prerun=False))
-    assert seeds_sets == set(search_seeds(graph, targets='e', forbidden_seeds='d', explore_pareto=True, prerun=False, verbose=True))
+    seeds_sets = {frozenset('e'), frozenset('abc')}
+    assert seeds_sets == set(search_seeds(graph, targets='e', forbidden_seeds='d', explore_pareto=True, greedy=True, prerun=False, verbose=True))
     assert seeds_sets == set(search_seeds(graph, targets='e', forbidden_seeds='d', explore_pareto=True, prerun=True, verbose=True))
     # cf test_forbidden_sources() for explanations of why the previous line would fail.
+
+
+def test_forbidden_intermediate_nodes_parallelized():
+    graph = quoted_data('reactant((a;b;c),1). product(d,1). reaction(1).'
+                        'reactant(d,2). product(e,2). reaction(2).'
+                        'reactant((m;n;o),3). product(e,3). reaction(3).')
+    utils.render_network(graph, 'todel.png')  # uncomment to help debugging
+    seeds_sets = {frozenset('d'), frozenset('abc'), frozenset('mno')}
+    assert seeds_sets == set(search_seeds(graph, targets='e', explore_pareto=True, prerun=True))
+    seeds_sets = {frozenset('mno'), frozenset('abc'), frozenset('e')}
+    assert seeds_sets == set(search_seeds(graph, targets='e', forbidden_seeds='d', prerun=False))
+
 
 def test_forbidden_sources():
     "Test the handling of root SCC that are completely forbidden"
