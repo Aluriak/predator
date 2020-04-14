@@ -24,14 +24,21 @@ from collections import defaultdict
 from pkg_resources import resource_filename
 from enum import Enum
 
+GREEDY_CLINGO_OPTIONS = {
+    'enumeration': '--configuration=jumpy --opt-strategy=usc,oll --opt-mode=optN',
+    'union': '--configuration=jumpy --opt-strategy=usc,oll --enum-mode brave --opt-mode=optN',
+    'intersection': '--configuration=jumpy --opt-strategy=usc,oll --enum-mode cautious --opt-mode=optN',
+    'one_sol': '--configuration=jumpy --opt-strategy=usc,oll'
+}
 
 class EnumMode(Enum):
     "The mode of solution enumeration"
-    Enumeration, Union, Intersection = 'enumeration', 'union', 'intersection'
+    Enumeration, Union, Intersection, No = 'enumeration', 'union', 'intersection', 'No'
 
     @property
     def clingo_option(self) -> str:
         return {
+            'No': '',
             'enumeration': '',
             'union': '--enum-mode brave',
             'intersection': '--enum-mode cautious',
@@ -40,6 +47,7 @@ class EnumMode(Enum):
     @property
     def clingo_option_for_iterative_search(self) -> str:
         return {
+            'No': '',
             'enumeration': '',
             'union': '--enum-mode brave',
             'intersection': '',
@@ -48,6 +56,7 @@ class EnumMode(Enum):
     @property
     def frozenset_operation(self) -> str:
         return {
+            'No': '',
             'enumeration': lambda sets: sets,
             'union': lambda sets: {frozenset.union(*sets)},
             'intersection': lambda sets: {frozenset.intersection(*sets)},
@@ -57,6 +66,7 @@ class EnumMode(Enum):
 ASP_SRC_ENUM_CC = resource_filename(__name__, 'asp/enum-cc.lp')
 ASP_SRC_SIMPLE_SEED_SOLVING = resource_filename(__name__, 'asp/simple-seed-solving.lp')
 ASP_SRC_GREEDY_TARGET_SEED_SOLVING = resource_filename(__name__, 'asp/greedy-target-seed-solving.lp')
+ASP_SRC_GREEDY_TARGET_SEED_SOLVING_SA = resource_filename(__name__, 'asp/greedy-target-seed-solving_SA.lp')
 ASP_SRC_GREEDY_TARGET_SEED_SOLVING_SEED_MINIMALITY = resource_filename(__name__, 'asp/greedy-target-seed-solving-seed-minimality-constraint.lp')
 ASP_SRC_ITERATIVE_TARGET_SEED_SOLVING__AIM = resource_filename(__name__, 'asp/iterative-target-seed-solving--aim.lp')
 ASP_SRC_ITERATIVE_TARGET_SEED_SOLVING__AIM__MINIMALITY_CONSTRAINT = resource_filename(__name__, 'asp/iterative-target-seed-solving--aim--minimality-constraint.lp')
@@ -73,9 +83,12 @@ assert os.path.exists(ASP_SRC_SIMPLE_SEED_SOLVING), ASP_SRC_SIMPLE_SEED_SOLVING
 def search_seeds(graph_data:str='', start_seeds:iter=(), forbidden_seeds:iter=(),
                  targets:set=(), graph_filename:str=None, enum_mode:str=EnumMode.Enumeration,
                  explore_pareto:bool=False, pareto_no_target_as_seeds:bool=False,
-                 greedy:bool=False, prerun:bool=True, verbose:bool=False, **kwargs) -> [{set}]:
+                 greedy:bool=False, intersection:bool=False, union:bool=False, enumeration:bool=False, sa_semantics:bool=False, prerun:bool=True, verbose:bool=False, **kwargs) -> [{set}]:
     "Wrapper around all seeds search methods. The used methods depends of given parameters."
-    enum_mode = EnumMode(enum_mode)
+    if enum_mode:  
+        enum_mode = EnumMode.Enumeration
+    else:
+        enum_mode = EnumMode.No
     # get graph data
     if not graph_data and graph_filename:
         graph_data = graph_module.graph_from_file(graph_filename)
@@ -90,7 +103,7 @@ def search_seeds(graph_data:str='', start_seeds:iter=(), forbidden_seeds:iter=()
             elif unreachables:  # all targets are unreachables
                 print('No target is reachable. Abort.')
     # detect which is the function to call, and its parameters
-    if not targets:  # no target, just activate everything
+    if not targets and not greedy:  # no target, just activate everything
         func = search_seeds_activate_all
         if 'compute_optimal_solutions' in kwargs:  del kwargs['compute_optimal_solutions']
     elif explore_pareto or pareto_no_target_as_seeds:  # explore the pareto front
@@ -99,6 +112,8 @@ def search_seeds(graph_data:str='', start_seeds:iter=(), forbidden_seeds:iter=()
     elif greedy:  # non efficient search of targets
         func = search_seeds_activate_targets_greedy
         if 'compute_optimal_solutions' in kwargs:  del kwargs['compute_optimal_solutions']
+        yield from func(graph_data, frozenset(start_seeds), frozenset(forbidden_seeds), frozenset(targets), intersection, union, enumeration, sa_semantics, graph_filename, enum_mode, verbose=verbose, **kwargs)
+        return
     else:  # efficient search of targets
         func = search_seeds_activate_targets_iterative
     if verbose:
@@ -484,7 +499,90 @@ def _compute_hypothesis_from_scc__pareto(scc_name:str, scc_encoding:set, sccs:di
     yield from __compute_hypothesis_from_scc(models, scc_name, scc_encoding, sccs, rev_scc_dag, enum_mode, verbose)
 
 
-def search_seeds_activate_targets_greedy(graph_data:str, start_seeds:iter=(), forbidden_seeds:set=(), targets:set=(),
+def search_seeds_activate_targets_greedy(graph_data:str, start_seeds:iter=(), forbidden_seeds:set=(), 
+                                         targets:set=(), intersection:bool=False, union:bool=False, enumeration:bool=False, sa_semantics:bool=False,
+                                         graph_filename:str=None,
+                                         compute_optimal_solutions:bool=False, filter_included_solutions:bool=True, verbose:bool=False) -> [{set}]:
+    """Yield the set of seeds for each found solution.
+
+    This implements the activation of targets: find the minimum sets
+    of seeds that activate all targets.
+    This is a greedy implementation that is yet expected to scale to large networks.
+
+    Both compute_optimal_solutions and filter_included_solutions are unused.
+    They are here only to mimic search_seeds_activate_targets_iterative API.
+
+    """
+    _print = print if verbose else lambda *x, **k: None
+    start_seeds_repr = ' '.join(f'existing_seed({quoted(s)}).' for s in start_seeds)
+    if len(targets) == 0:
+        targets_repr = "\ntarget(M) :- metabolite(M)."
+        _print(f'Search seeds validating all metabolites as targets…')
+    else:
+        targets_repr = ' '.join(f'target({quoted(t)}).' for t in targets)
+        _print(f'Search seeds validating the {len(targets)} targets…')
+    forb_repr = ' '.join(f'forbidden({quoted(s)}).' for s in forbidden_seeds)
+    data_repr = graph_data + start_seeds_repr + forb_repr + targets_repr
+    # ground the data and the rules
+    if sa_semantics:
+        grounded = clyngor.grounded_program((ASP_SRC_GREEDY_TARGET_SEED_SOLVING_SA, 
+                            ASP_SRC_GREEDY_TARGET_SEED_SOLVING_SEED_MINIMALITY),
+                            inline=data_repr)
+    else:
+        grounded = clyngor.grounded_program((ASP_SRC_GREEDY_TARGET_SEED_SOLVING, 
+                            ASP_SRC_GREEDY_TARGET_SEED_SOLVING_SEED_MINIMALITY),
+                            inline=data_repr)
+    # get one optimal sol and retrieve optmimum
+    models = clyngor.solve_from_grounded(grounded, nb_model=1, 
+                   options=GREEDY_CLINGO_OPTIONS['one_sol']).discard_quotes.by_predicate
+    _print(f'\t', models.command)
+    for model in models.by_arity.with_optimization:
+        one_model = model
+    optimum = ','.join(map(str, one_model[1]))
+    one_model = one_model[0]
+    if 'seed' not in one_model:
+            _print('\tNo seed found')
+    else:
+        seeds = frozenset(args[0] for args in one_model.get('seed', ()) if len(args) == 1)
+        print(f"One solution:\n{', '.join(map(str, seeds))}\n")
+    if intersection:
+        imodels = clyngor.solve_from_grounded(grounded, nb_model=None, 
+                   options=f"{GREEDY_CLINGO_OPTIONS['intersection']},{optimum}").discard_quotes.by_predicate
+        _print(f'\t', imodels.command)
+        for model in imodels:
+            _models = [model]
+        imodels = _models
+        seeds = frozenset(args[0] for args in imodels[0].get('seed', ()) if len(args) == 1)
+        print(f"Intersection:\n{', '.join(map(str, seeds))}\n")
+    if union:
+        umodels = clyngor.solve_from_grounded(grounded, nb_model=None, 
+                   options=f"{GREEDY_CLINGO_OPTIONS['union']},{optimum}").discard_quotes.by_predicate
+        _print(f'\t', umodels.command)
+        for model in umodels:
+            _models = [model]
+        umodels = _models
+        seeds = frozenset(args[0] for args in umodels[0].get('seed', ()) if len(args) == 1)
+        print(f"Union:\n{', '.join(map(str, seeds))}\n")
+    if enumeration:
+        emodels = clyngor.solve_from_grounded(grounded, nb_model=0, 
+                   options=f"{GREEDY_CLINGO_OPTIONS['enumeration']},{optimum}").discard_quotes.by_predicate
+        _print(f'\t', emodels.command)
+        emodels = opt_models_from_clyngor_answers(emodels)
+        for model in emodels:
+            seeds = frozenset(args[0] for args in model.get('seed', ()) if len(args) == 1)
+            yield seeds
+    # else:
+    #     for model in models:
+    #         _models = [model]
+    #     models = _models
+    # for model in models:
+    #     if 'seed' not in model:
+    #         _print('\tNo seed found')
+    #     seeds = frozenset(args[0] for args in models[0].get('seed', ()) if len(args) == 1)
+    # yield seeds
+
+
+def search_seeds_activate_targets_greedy_L(graph_data:str, start_seeds:iter=(), forbidden_seeds:set=(), targets:set=(),
                                          graph_filename:str=None, enum_mode:EnumMode=EnumMode.Enumeration,
                                          compute_optimal_solutions:bool=False, filter_included_solutions:bool=True, verbose:bool=False) -> [{set}]:
     """Yield the set of seeds for each found solution.

@@ -17,26 +17,42 @@
 metabolite(M) :- reactant(M,_).
 metabolite(M) :- product(M,_).
 
-% A metabolite is activated if produced by a reaction with all its reactants activated.
-activated(M) :- metabolite(M) ; product(M,R) ; activated(T): reactant(T,R).
-
-% A seed is activated
-activated(S) :- existing_seed(S).
-activated(S) :- seed(S).
-
 % try to cut the set of possible seeds
 can_reach(M) :- target(M).
 can_reach(M) :- reactant(M,R) ; product(P,R) ; can_reach(P).
 
-% Choose a set of seeds among metabolites that can reach the targets somehow.
+% choose a set of seed from the possible seeds
 { seed(M): can_reach(M), not forbidden(M) }.
 
-% Discard any model that is not activating all targets.
-:- target(M) ; not activated(M).
 
-nb(seed,N) :- N={seed(_)}.
-nb(activated,N) :- N={activated(_)}.
-nb(target,N) :- N={target(_)}.
-nb(canreach,N) :- N={can_reach(_)}.
+% a reaction is applied if all reactants are available
+areaction(R) :- available(M) : reactant(M,R); reaction(R).
+% otherwise its inactive
+ireaction(R) :- reaction(R), not areaction(R).
+
+% a metabolite is available if it is given as a seed or if it is the product of an applied reaction
+available(X) :- seed(X).
+available(X) :- product(X,R), areaction(R).
+
+reach(X) :- seed(X).
+reach(X) :- product(X,R), reactant(Y,R), reach(Y).
+
+% a metabolite might be available or not
+{ available(X) } :- product(X,R), reach(X). 
+
+% atleast one reaction must be producing X
+% if all are inactive it is not a solution 
+is_produced(X) :- areaction(R), product(X,R).
+:- not is_produced(X), available(X), not seed(X).
+
+% there must be a path from a seed to the available metabolite
+founded(X) :- seed(X).
+founded(X) :- product(X,R), reactant(Y,R), founded(Y), areaction(R).
+
+:- available(X), not founded(X).
+
+% every target must be available
+:- target(X), not available(X).
+
 
 #show seed/1.

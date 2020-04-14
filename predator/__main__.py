@@ -41,6 +41,8 @@ def cli_parser() -> argparse.ArgumentParser:
                         help="metabolites that cannot be seed in the graph")
     parser.add_argument('--export', '-e', type=str, default=None,
                         help="file export of the ASP instance")
+    parser.add_argument('--instance', '-i', type=str, default=None,
+                        help="export the ASP instance of input data and quit")
     parser.add_argument('--visualize', '-v', type=str, default=None,
                         help="png file to render the input graph in (default: don't render)")
     parser.add_argument('--visualize-without-reactions', '-vr', type=str, default=None,
@@ -48,16 +50,18 @@ def cli_parser() -> argparse.ArgumentParser:
     parser.add_argument('--visualize-dag', '-vd', type=str, default=None,
                         help="png file to render the DAG of SCC (default: don't render)")
 
-    # flags groups
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument('--union', action='store_true',
-                       help="Print the union of all solutions")
-    group.add_argument('--intersection', action='store_true',
-                       help="Print the intersection of all solutions")
+    # # flags groups if want union, intersection and enumeration to be mutually exclusive
+    # group = parser.add_mutually_exclusive_group()
+    # group.add_argument('--union', action='store_true',
+    #                    help="Print the union of all solutions")
+    # group.add_argument('--intersection', action='store_true',
+    #                    help="Print the intersection of all solutions")
 
     # flags
     parser.add_argument('--greedy', action='store_true',
-                        help="Use greedy implementation for target search")
+                        help="Use greedy implementation for seed search")
+    parser.add_argument('--sa-semantics', action='store_true',
+                        help="Use Sagot-Acuna semantics for seed search")    
     parser.add_argument('--no-prerun', action='store_true',
                         help="Don't perform the preruning step")
     parser.add_argument('--no-topological-injection', action='store_true',
@@ -72,6 +76,12 @@ def cli_parser() -> argparse.ArgumentParser:
                         help="Explore the pareto front of targets/seeds/targets-as-seeds ratios")
     parser.add_argument('--scc-with-asp', action='store_true',
                         help="Use ASP search for SCC mining")
+    parser.add_argument('--intersection', action='store_true',
+                        help="Compute intersection of solutions")    
+    parser.add_argument('--union', action='store_true',
+                        help="Compute union of solutions")
+    parser.add_argument('--enumeration', action='store_true',
+                        help="Enumerate all solutions")
     parser.add_argument('--verbose', action='store_true',
                         help="Print everything there is to know about the search ; beware the flood")
 
@@ -122,6 +132,16 @@ if __name__ == '__main__':
     if targets:
         initial_graph += '\n'.join(f'annot(upper,"{tg}","T").' for tg in targets)
 
+    if args.instance:
+        with open(args.instance, "w") as f:
+            f.write(graph + '\n')
+            f.write('\n'.join(f'target("{tg}").' for tg in targets))
+            f.write('\n')
+            f.write('\n'.join(f'existing_seed("{tg}").' for tg in seeds))
+            f.write('\n')
+            f.write('\n'.join(f'forbidden("{fs}").' for fs in forbidden_seeds))
+        quit()
+
     # Prerun
     time_prerun = 'unperformed'
     if not args.no_prerun:
@@ -159,7 +179,7 @@ if __name__ == '__main__':
     # Compute available targets (union of --targets and --targets-file)
     #  (and do the same for (forbidden) seeds).
     time_seed_search = time.time()
-    for idx, seeds in enumerate(predator.search_seeds(graph, seeds, forbidden_seeds, targets, enum_mode=enum_mode, graph_filename=graph_filename, explore_pareto=args.pareto, pareto_no_target_as_seeds=args.pareto_full, greedy=args.greedy, prerun=False, verbose=args.verbose, **supp_args), start=1):
+    for idx, seeds in enumerate(predator.search_seeds(graph, seeds, forbidden_seeds, targets, graph_filename=graph_filename, enum_mode=enum_mode, explore_pareto=args.pareto, pareto_no_target_as_seeds=args.pareto_full, greedy=args.greedy, intersection=args.intersection, union=args.union, enumeration=args.enumeration, sa_semantics=args.sa_semantics, prerun=False, **supp_args), start=1):
         repr_seeds = ', '.join(map(str, seeds))
         print(f"Solution {idx}:\n{repr_seeds}\n")
     print('end of solutions.')

@@ -42,7 +42,7 @@ def get_ids_from_file(fname:str) -> [str]:
         for model in solve(fname).by_arity:
             for target, in model.get('target/1', ()):
                 yield target
-    elif ext in {'.txt', ''}:  # file, one line per target
+    elif ext in {'.txt', ''}:  # file, one line per metabolite
         with open(fname) as fd:
             yield from (line for line in map(str.strip, fd) if line)
     else:
