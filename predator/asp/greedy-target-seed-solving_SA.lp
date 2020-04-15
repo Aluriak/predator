@@ -14,6 +14,10 @@
 %   - seed(S): node S is a seed
 
 %%%%%%% Common in all versions %%%%%%%%%%
+% there can be existing seeds
+% A seed is activated
+any_seed(S) :- existing_seed(S).
+any_seed(S) :- seed(S).
 
 % A metabolite is a reactant or product.
 metabolite(M) :- reactant(M,_).
@@ -30,7 +34,7 @@ can_reach(M) :- reactant(M,R) ; product(P,R) ; can_reach(P).
 feasible(R) :- present(M) : reactant(M,R); reaction(R).
 
 % a seed is present
-present(M) :- seed(M).
+present(M) :- any_seed(M).
 
 % every target must be present
 :- target(X), not present(X).
@@ -44,14 +48,14 @@ present(M) :- seed(M).
 % producible(M) :- feasible(R), product(M,R).
 
 % % every present metabolite must be producible
-% :- present(M), not producible(M), not seed(M).
+% :- present(M), not producible(M), not any_seed(M).
 
 %%%%%%% version 2 %%%%%%%%
 
 % a metabolite is present if it is given as a seed or if it is the product of an applied reaction
 present(X) :- product(X,R), feasible(R).
 
-reach(X) :- seed(X).
+reach(X) :- any_seed(X).
 reach(X) :- product(X,R), reactant(Y,R), reach(Y).
 
 % a metabolite might be present or not
@@ -59,10 +63,10 @@ reach(X) :- product(X,R), reactant(Y,R), reach(Y).
 
 % atleast one reaction must be producing X
 is_produced(X) :- feasible(R), product(X,R).
-:- not is_produced(X), present(X), not seed(X).
+:- not is_produced(X), present(X), not any_seed(X).
 
 % there must be a path from a seed to the present metabolite
-founded(X) :- seed(X).
+founded(X) :- any_seed(X).
 founded(X) :- product(X,R), reactant(Y,R), founded(Y), feasible(R).
 
 :- present(X), not founded(X).
