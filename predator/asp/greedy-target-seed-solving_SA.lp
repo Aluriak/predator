@@ -13,6 +13,8 @@
 % OUTPUTS:  one model for each set of seed that activate all metabolites
 %   - seed(S): node S is a seed
 
+%%%%%%% Common in all versions %%%%%%%%%%
+
 % A metabolite is a reactant or product.
 metabolite(M) :- reactant(M,_).
 metabolite(M) :- product(M,_).
@@ -21,14 +23,16 @@ metabolite(M) :- product(M,_).
 can_reach(M) :- target(M).
 can_reach(M) :- reactant(M,R) ; product(P,R) ; can_reach(P).
 
+% choose a set of seed from the possible seeds
+{ seed(M): can_reach(M), not forbidden(M) }.
+
+%%%%%%% version 1 %%%%%%%%
+
 % a seed is present
 present(M) :- seed(M).
 
 % a metabolite is present or not
 { present(M) } :- metabolite(M).
-
-% choose a set of seed from the possible seeds
-{ seed(M) } :- can_reach(M), not forbidden(M).
 
 % a reaction is feasible if all reactants are present
 feasible(R) :- present(M) : reactant(M,R); reaction(R).
@@ -38,6 +42,11 @@ producible(M) :- feasible(R), product(M,R).
 
 % every present metabolite must be producible
 :- present(M), not producible(M), not seed(M).
+
+% every target must be present
+:- target(X), not present(X).
+
+%%%%%%% version 2 %%%%%%%%
 
 % % a reaction is applied if all reactants are available
 % areaction(R) :- available(M) : reactant(M,R); reaction(R).
@@ -65,8 +74,10 @@ producible(M) :- feasible(R), product(M,R).
 
 % :- available(X), not founded(X).
 
-% every target must be available
-:- target(X), not present(X).
+% % every target must be available
+% :- target(X), not available(X).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 #show seed/1.
