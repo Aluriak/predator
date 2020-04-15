@@ -21,38 +21,52 @@ metabolite(M) :- product(M,_).
 can_reach(M) :- target(M).
 can_reach(M) :- reactant(M,R) ; product(P,R) ; can_reach(P).
 
+% a seed is present
+present(M) :- seed(M).
+
+% a metabolite is present or not
+{ present(M) } :- metabolite(M).
+
 % choose a set of seed from the possible seeds
-{ seed(M): can_reach(M), not forbidden(M) }.
+{ seed(M) } :- can_reach(M), not forbidden(M).
 
+% a reaction is feasible if all reactants are present
+feasible(R) :- present(M) : reactant(M,R); reaction(R).
 
-% a reaction is applied if all reactants are available
-areaction(R) :- available(M) : reactant(M,R); reaction(R).
-% otherwise its inactive
-ireaction(R) :- reaction(R), not areaction(R).
+% products of a feasible reaction are producible
+producible(M) :- feasible(R), product(M,R).
 
-% a metabolite is available if it is given as a seed or if it is the product of an applied reaction
-available(X) :- seed(X).
-available(X) :- product(X,R), areaction(R).
+% every present metabolite must be producible
+:- present(M), not producible(M), not seed(M).
 
-reach(X) :- seed(X).
-reach(X) :- product(X,R), reactant(Y,R), reach(Y).
+% % a reaction is applied if all reactants are available
+% areaction(R) :- available(M) : reactant(M,R); reaction(R).
+% % otherwise its inactive
+% ireaction(R) :- reaction(R), not areaction(R).
 
-% a metabolite might be available or not
-{ available(X) } :- product(X,R), reach(X). 
+% % a metabolite is available if it is given as a seed or if it is the product of an applied reaction
+% available(X) :- seed(X).
+% available(X) :- product(X,R), areaction(R).
 
-% atleast one reaction must be producing X
-% if all are inactive it is not a solution 
-is_produced(X) :- areaction(R), product(X,R).
-:- not is_produced(X), available(X), not seed(X).
+% reach(X) :- seed(X).
+% reach(X) :- product(X,R), reactant(Y,R), reach(Y).
 
-% there must be a path from a seed to the available metabolite
-founded(X) :- seed(X).
-founded(X) :- product(X,R), reactant(Y,R), founded(Y), areaction(R).
+% % a metabolite might be available or not
+% { available(X) } :- product(X,R), reach(X). 
 
-:- available(X), not founded(X).
+% % atleast one reaction must be producing X
+% % if all are inactive it is not a solution 
+% is_produced(X) :- areaction(R), product(X,R).
+% :- not is_produced(X), available(X), not seed(X).
+
+% % there must be a path from a seed to the available metabolite
+% founded(X) :- seed(X).
+% founded(X) :- product(X,R), reactant(Y,R), founded(Y), areaction(R).
+
+% :- available(X), not founded(X).
 
 % every target must be available
-:- target(X), not available(X).
+:- target(X), not present(X).
 
 
 #show seed/1.
