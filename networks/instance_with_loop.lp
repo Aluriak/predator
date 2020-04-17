@@ -1,3 +1,6 @@
+reaction("importS1").
+product("S1", "importS1").
+
 reaction("r1").
 reactant("S1", "r1").
 reactant("I2", "r1").
