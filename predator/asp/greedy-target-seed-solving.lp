@@ -28,15 +28,18 @@ activated(S) :- seed(S).
 can_reach(M) :- target(M).
 can_reach(M) :- reactant(M,R) ; product(P,R) ; can_reach(P).
 
-% Choose a set of seeds among metabolites that can reach the targets somehow.
-{ seed(M): can_reach(M), not forbidden(M) }.
+% % Choose a set of seeds among metabolites that can reach the targets somehow.
+% { seed(M): can_reach(M), not forbidden(M) }.
+% located in the constraint/minimisation file
 
-% Discard any model that is not activating all targets.
-:- target(M) ; not activated(M).
+% % Discard any model that is not activating all targets.
+% :- target(M) ; not activated(M).
+% located in the constraint/minimisation file
 
-nb(seed,N) :- N={seed(_)}.
-nb(activated,N) :- N={activated(_)}.
-nb(target,N) :- N={target(_)}.
-nb(canreach,N) :- N={can_reach(_)}.
+% nb(seed,N) :- N={seed(_)}.
+% nb(activated,N) :- N={activated(_)}.
+% nb(target,N) :- N={target(_)}.
+% nb(canreach,N) :- N={can_reach(_)}.
 
-#show seed/1.
+% #show seed/1.
+% located in the constraint/minimisation file

@@ -27,50 +27,53 @@ metabolite(M) :- product(M,_).
 can_reach(M) :- target(M).
 can_reach(M) :- reactant(M,R) ; product(P,R) ; can_reach(P).
 
-% choose a set of seed from the possible seeds
-{ seed(M): can_reach(M), not forbidden(M) }.
+% % choose a set of seed from the possible seeds
+% { seed(M): can_reach(M), not forbidden(M) }.
+% located in the constraint/minimisation file
 
-% a reaction is applied if all reactants are present
-feasible(R) :- present(M) : reactant(M,R); reaction(R).
+% a reaction is applied if all reactants are activated
+feasible(R) :- activated(M) : reactant(M,R); reaction(R).
 
-% a seed is present
-present(M) :- any_seed(M).
+% a seed is activated
+activated(M) :- any_seed(M).
 
-% every target must be present
-:- target(X), not present(X).
+% % every target must be activated
+% :- target(X), not activated(X).
+% located in the constraint/minimisation file
 
 %%%%%%% version 1 %%%%%%%%
 
-% % a metabolite is present or not
-% { present(M) } :- metabolite(M).
+% % a metabolite is activated or not
+% { activated(M) } :- metabolite(M).
 
 % % products of a feasible reaction are producible
 % producible(M) :- feasible(R), product(M,R).
 
-% % every present metabolite must be producible
-% :- present(M), not producible(M), not any_seed(M).
+% % every activated metabolite must be producible
+% :- activated(M), not producible(M), not any_seed(M).
 
 %%%%%%% version 2 %%%%%%%%
 
-% a metabolite is present if it is given as a seed or if it is the product of an applied reaction
-present(X) :- product(X,R), feasible(R).
+% a metabolite is activated if it is given as a seed or if it is the product of an applied reaction
+activated(X) :- product(X,R), feasible(R).
 
 reach(X) :- any_seed(X).
 reach(X) :- product(X,R), reactant(Y,R), reach(Y).
 
-% a metabolite might be present or not
-{ present(X) } :- product(X,R), reach(X). 
+% a metabolite might be activated or not
+{ activated(X) } :- product(X,R), reach(X). 
 
 % atleast one reaction must be producing X
 is_produced(X) :- feasible(R), product(X,R).
-:- not is_produced(X), present(X), not any_seed(X).
+:- not is_produced(X), activated(X), not any_seed(X).
 
-% there must be a path from a seed to the present metabolite
+% there must be a path from a seed to the activated metabolite
 founded(X) :- any_seed(X).
 founded(X) :- product(X,R), reactant(Y,R), founded(Y), feasible(R).
 
-:- present(X), not founded(X).
+:- activated(X), not founded(X).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-#show seed/1.
+% #show seed/1.
+% located in the constraint/minimisation file

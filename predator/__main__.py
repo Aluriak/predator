@@ -35,6 +35,10 @@ def cli_parser() -> argparse.ArgumentParser:
                         help="file containing one seed per line")
     parser.add_argument('--seeds', '-s', nargs='*', type=str, default=[],
                         help="seeds already activated in the graph")
+    parser.add_argument('--possible-seeds-file', '-psf', type=str, default=None,
+                        help="file containing a set of compounds in which seed selection will be performed (greedy mode only)")
+    parser.add_argument('--possible-seeds', '-ps', nargs='*', type=str, default=[],
+                        help="set of compounds in which seed selection will be performed (greedy mode only)")
     parser.add_argument('--forbidden-seeds-file', '-fsf', type=str, default=None,
                         help="file containing one forbidden seed per line")
     parser.add_argument('--forbidden-seeds', '-fs', nargs='*', type=str, default=[],
@@ -123,6 +127,7 @@ if __name__ == '__main__':
     targets = get_all_ids(args.targets, args.targets_file)
     seeds = get_all_ids(args.seeds, args.seeds_file)
     forbidden_seeds = get_all_ids(args.forbidden_seeds, args.forbidden_seeds_file)
+    possible_seeds = get_all_ids(args.possible_seeds, args.possible_seeds_file)
     enum_mode = 'enumeration'
     if args.union:  enum_mode = 'union'
     if args.intersection:  enum_mode = 'intersection'
@@ -137,9 +142,11 @@ if __name__ == '__main__':
             f.write(graph + '\n')
             f.write('\n'.join(f'target("{tg}").' for tg in targets))
             f.write('\n')
-            f.write('\n'.join(f'existing_seed("{tg}").' for tg in seeds))
+            f.write('\n'.join(f'existing_seed("{sd}").' for sd in seeds))
             f.write('\n')
             f.write('\n'.join(f'forbidden("{fs}").' for fs in forbidden_seeds))
+            f.write('\n')
+            f.write('\n'.join(f'possible_seed("{ps}").' for ps in possible_seeds))
         quit()
 
     # Prerun
@@ -179,7 +186,7 @@ if __name__ == '__main__':
     # Compute available targets (union of --targets and --targets-file)
     #  (and do the same for (forbidden) seeds).
     time_seed_search = time.time()
-    for idx, seeds in enumerate(predator.search_seeds(graph, seeds, forbidden_seeds, targets, graph_filename=graph_filename, enum_mode=enum_mode, explore_pareto=args.pareto, pareto_no_target_as_seeds=args.pareto_full, greedy=args.greedy, intersection=args.intersection, union=args.union, enumeration=args.enumeration, sa_semantics=args.sa_semantics, prerun=False, **supp_args), start=1):
+    for idx, seeds in enumerate(predator.search_seeds(graph, seeds, forbidden_seeds, possible_seeds, targets, graph_filename=graph_filename, enum_mode=enum_mode, explore_pareto=args.pareto, pareto_no_target_as_seeds=args.pareto_full, greedy=args.greedy, intersection=args.intersection, union=args.union, enumeration=args.enumeration, sa_semantics=args.sa_semantics, prerun=False, **supp_args), start=1):
         repr_seeds = ', '.join(map(str, seeds))
         print(f"Solution {idx}:\n{repr_seeds}\n")
     print('end of solutions.')
