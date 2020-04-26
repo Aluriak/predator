@@ -25,7 +25,7 @@ metabolite(M) :- product(M,_).
 
 % try to cut the set of possible seeds
 can_reach(M) :- target(M).
-can_reach(M) :- reactant(M,R) ; product(P,R) ; can_reach(P).
+can_reach(M) :- reactant(M,R), product(P,R), can_reach(P).
 
 % % choose a set of seed from the possible seeds
 % { seed(M): can_reach(M), not forbidden(M) }.
