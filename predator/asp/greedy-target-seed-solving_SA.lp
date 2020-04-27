@@ -34,18 +34,12 @@ present(M) :- any_seed(M).
 % :- target(X), not present(X).
 % located in the constraint/minimisation file
 
-%%%%%%% version 1 %%%%%%%%
 
-% % a metabolite is present or not
-% { present(M) } :- metabolite(M).
 
 % products of a feasible reaction are producible
 producible(M) :- feasible(R), product(M,R).
 
-% % every present metabolite must be producible
-% :- present(M), not producible(M), not any_seed(M).
 
-%%%%%%% version 2 %%%%%%%%
 
 
 % try to cut the set of possibly present metabolites
@@ -55,7 +49,7 @@ reach(X) :- product(X,R), reactant(Y,R), reach(Y).
 % a metabolite might be present or not
 { present(X) } :- product(X,R), reach(X). 
 
-:- present(X), not producible(X).
+:- present(X), not any_seed(X), not producible(X).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
 
